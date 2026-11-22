@@ -131,15 +131,15 @@
             class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-amber-300 flex items-center justify-center transition cursor-pointer">
             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Month / Schedule View Toggle -->
+        <!-- Month / Week / Schedule View Toggle -->
         <div class="inline-flex items-center p-1 rounded-xl bg-slate-950/60 border border-white/15 shrink-0" role="group" aria-label="Calendar View">
           <button id="viewMonthBtn" type="button"
             class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm lg:text-base font-extrabold bg-amber-400 text-slate-950 shadow transition cursor-pointer">
             Month
+          </button>
+          <button id="viewWeekBtn" type="button"
+            class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm lg:text-base font-extrabold text-slate-200 hover:text-white transition cursor-pointer">
+            Week
           </button>
           <button id="viewScheduleBtn" type="button"
             class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm lg:text-base font-extrabold text-slate-200 hover:text-white transition cursor-pointer">
@@ -215,6 +215,14 @@
 
         <!-- Month Grid: Dynamically sized rows with minmax(0, 1fr) so bottom weeks NEVER clip -->
         <div id="monthGrid" class="flex-1 min-h-0 grid grid-cols-7 gap-1.5 sm:gap-2"></div>
+      </div>
+
+      <!-- WEEK VIEW CONTAINER (Monday - Sunday Large Wall Columns) -->
+      <div id="weekViewContainer" class="hidden flex-1 min-h-0 flex flex-col">
+        <div id="weekRangeHeader" class="shrink-0 flex items-center justify-between gap-2 px-2 pb-2 sm:pb-2.5 text-sm sm:text-base lg:text-xl font-extrabold text-amber-300">
+          <span id="weekRangeLabel">Week View</span>
+        </div>
+        <div id="weekGrid" class="flex-1 min-h-0 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2 overflow-y-auto no-scrollbar"></div>
       </div>
 
       <!-- SCHEDULE / AGENDA VIEW CONTAINER -->
@@ -493,8 +501,9 @@
       }
 
       let settings = { ...defaultSettings, ...loadJSON(STORAGE_SETTINGS, {}) };
-      let currentView = 'month'; // 'month' | 'schedule'
+      let currentView = 'month'; // 'month' | 'week' | 'schedule'
       let viewedMonthDate = new Date();
+      let viewedWeekAnchorDate = new Date();
       let selectedDayISO = toISODate(new Date());
       let wallpaperIdx = 0;
       let activeBgLayer = 'A';
@@ -693,21 +702,26 @@
 
       function applyWallpaperPreference() {
         clearInterval(wallpaperTimer);
-        if (settings.wallpaperMode !== 'rotate') {
-          const idx = parseInt(settings.wallpaperMode, 10) || 0;
-          setBackgroundImage(WALLPAPERS[idx % WALLPAPERS.length]);
-          return;
-        }
+        wallpaperTimer = null;
 
-        setBackgroundImage(WALLPAPERS[wallpaperIdx % WALLPAPERS.length]);
-        wallpaperTimer = setInterval(() => {
-          wallpaperIdx = (wallpaperIdx + 1) % WALLPAPERS.length;
-          setBackgroundImage(WALLPAPERS[wallpaperIdx]);
-        }, 60000);
+        if (settings.wallpaperMode === 'rotate') {
+          setBackgroundImage(WALLPAPERS[wallpaperIdx % WALLPAPERS.length]);
+          wallpaperTimer = setInterval(() => {
+            wallpaperIdx = (wallpaperIdx + 1) % WALLPAPERS.length;
+            setBackgroundImage(WALLPAPERS[wallpaperIdx]);
+          }, 5 * 60 * 1000);
+        } else {
+          const parsedIdx = parseInt(settings.wallpaperMode, 10);
+          const safeIdx = isNaN(parsedIdx)
+            ? 0
+            : ((parsedIdx % WALLPAPERS.length) + WALLPAPERS.length) % WALLPAPERS.length;
+          wallpaperIdx = safeIdx;
+          setBackgroundImage(WALLPAPERS[safeIdx]);
+        }
       }
 
       /* =====================================================================
-         6A. FULL-SCREEN MONTHLY CALENDAR RENDERER
+         6. FULL-SCREEN MONTHLY CALENDAR RENDERER (MONDAY FIRST)
          ===================================================================== */
       function renderMonthCalendar() {
         const year = viewedMonthDate.getFullYear();
@@ -716,50 +730,157 @@
         if (!grid) return;
         grid.innerHTML = '';
 
-        // Convert JS Sunday=0..Saturday=6 into Monday=0..Sunday=6
-        const rawFirstWeekday = new Date(year, month, 1).getDay();
-        const firstDayWeekday = (rawFirstWeekday + 6) % 7;
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const totalCells = firstDayWeekday + daysInMonth;
-        const rowCount = Math.ceil(totalCells / 7);
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const daysInMonth = lastDayOfMonth.getDate();
 
-        grid.style.gridTemplateRows = `repeat(${rowCount}, minmax(0, 1fr))`;
+        // Monday = 0, Tuesday = 1, ..., Sunday = 6
+        const leadingBlanks = (firstDayOfMonth.getDay() + 6) % 7;
+        const totalCells = leadingBlanks + daysInMonth;
+        const numRows = totalCells > 35 ? 6 : 5;
+        const cellCount = numRows * 7;
 
+        grid.style.gridTemplateRows = `repeat(${numRows}, minmax(0, 1fr))`;
+
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
         const todayISO = toISODate(new Date());
 
-        // Leading blank cells
-        for (let i = 0; i < firstDayWeekday; i++) {
-          const emptyCell = document.createElement('div');
-          emptyCell.className = 'rounded-2xl bg-white/[0.03] border border-white/[0.06]';
-          grid.appendChild(emptyCell);
-        }
+        for (let i = 0; i < cellCount; i++) {
+          let cellYear = year;
+          let cellMonth = month;
+          let dayNum;
+          let isCurrentMonth = true;
 
-        // Day cells
-        for (let day = 1; day <= daysInMonth; day++) {
-          const isoDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          if (i < leadingBlanks) {
+            dayNum = prevMonthLastDay - leadingBlanks + i + 1;
+            cellMonth = month - 1;
+            if (cellMonth < 0) {
+              cellMonth = 11;
+              cellYear = year - 1;
+            }
+            isCurrentMonth = false;
+          } else if (i >= leadingBlanks + daysInMonth) {
+            dayNum = i - (leadingBlanks + daysInMonth) + 1;
+            cellMonth = month + 1;
+            if (cellMonth > 11) {
+              cellMonth = 0;
+              cellYear = year + 1;
+            }
+            isCurrentMonth = false;
+          } else {
+            dayNum = i - leadingBlanks + 1;
+          }
+
+          const isoDate = toISODate(new Date(cellYear, cellMonth, dayNum));
           const isToday = isoDate === todayISO;
 
           const cell = document.createElement('div');
           cell.className = `rounded-2xl p-1.5 sm:p-2 flex flex-col min-h-0 overflow-hidden border transition cursor-pointer ${
             isToday
               ? 'bg-amber-400/20 border-amber-300 shadow-lg'
-              : 'bg-slate-950/45 hover:bg-slate-900/65 border-white/12'
+              : isCurrentMonth
+                ? 'bg-slate-950/45 hover:bg-slate-900/65 border-white/12'
+                : 'bg-slate-950/20 hover:bg-slate-900/35 border-white/5 opacity-45'
           }`;
           cell.addEventListener('click', () => openDayModal(isoDate));
 
-          // Day number header
-          const dayHeader = document.createElement('div');
-          dayHeader.className = 'shrink-0 flex items-center justify-between mb-1';
+          const topRow = document.createElement('div');
+          topRow.className = 'shrink-0 flex items-center justify-between gap-1 mb-0.5 sm:mb-1';
 
-          const numBadge = document.createElement('span');
-          numBadge.className = isToday
-            ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-400 text-slate-950 font-black text-sm sm:text-lg flex items-center justify-center'
-            : 'text-sm sm:text-lg lg:text-xl font-extrabold text-slate-100 px-1';
-          numBadge.textContent = String(day);
-          dayHeader.appendChild(numBadge);
-          cell.appendChild(dayHeader);
+          const dayBadge = document.createElement('span');
+          dayBadge.className = isToday
+            ? 'w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-amber-400 text-slate-950 font-black text-xs sm:text-base lg:text-lg flex items-center justify-center'
+            : 'text-sm sm:text-lg lg:text-2xl font-extrabold text-white leading-none px-1';
+          dayBadge.textContent = String(dayNum);
+          topRow.appendChild(dayBadge);
 
-          // Events inside this day cell
+          cell.appendChild(topRow);
+
+          const dayEvents = events
+            .filter(ev => ev.date === isoDate)
+            .sort((a, b) => {
+              if (a.allDay && !b.allDay) return -1;
+              if (!a.allDay && b.allDay) return 1;
+              return (a.startTime || '').localeCompare(b.startTime || '');
+            });
+
+          const eventsWrap = document.createElement('div');
+          eventsWrap.className = 'flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1';
+
+          dayEvents.forEach(ev => {
+            const theme = getOwnerTheme(ev.owner);
+            const pill = document.createElement('div');
+            pill.className = `px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg border text-xs sm:text-sm lg:text-base font-bold truncate ${theme.pillClass}`;
+            const timePrefix = ev.allDay ? '' : `${formatTime12or24(ev.startTime)} `;
+            pill.textContent = `${timePrefix}${ev.title}`;
+            pill.title = `${timePrefix}${ev.title} (${theme.label})`;
+            pill.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openDayModal(isoDate, ev);
+            });
+            eventsWrap.appendChild(pill);
+          });
+
+          cell.appendChild(eventsWrap);
+          grid.appendChild(cell);
+        }
+      }
+
+      function getMondayOfWeek(dateObj) {
+        const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+        const offsetToMonday = (d.getDay() + 6) % 7; // Monday = 0 .. Sunday = 6
+        d.setDate(d.getDate() - offsetToMonday);
+        return d;
+      }
+
+      function renderWeekView() {
+        const grid = document.getElementById('weekGrid');
+        const rangeLabel = document.getElementById('weekRangeLabel');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const monday = getMondayOfWeek(viewedWeekAnchorDate);
+        const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+        const todayISO = toISODate(new Date());
+
+        if (rangeLabel) {
+          const startStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const endStr = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          rangeLabel.textContent = `${startStr} – ${endStr}`;
+        }
+
+        for (let i = 0; i < 7; i++) {
+          const dayDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+          const isoDate = toISODate(dayDate);
+          const isToday = isoDate === todayISO;
+
+          const col = document.createElement('div');
+          col.className = `rounded-2xl p-2 sm:p-2.5 flex flex-col min-h-[160px] lg:min-h-0 overflow-hidden border transition cursor-pointer ${
+            isToday
+              ? 'bg-amber-400/20 border-amber-300 shadow-lg'
+              : 'bg-slate-950/50 hover:bg-slate-900/65 border-white/15'
+          }`;
+          col.addEventListener('click', () => openDayModal(isoDate));
+
+          const header = document.createElement('div');
+          header.className = 'shrink-0 flex items-center justify-between gap-1 pb-1.5 mb-1.5 border-b border-white/12';
+
+          const weekdaySpan = document.createElement('span');
+          weekdaySpan.className = `text-xs sm:text-sm font-extrabold uppercase tracking-wider ${
+            isToday ? 'text-amber-300' : 'text-slate-300'
+          }`;
+          weekdaySpan.textContent = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+          const dayNumBadge = document.createElement('span');
+          dayNumBadge.className = isToday
+            ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-400 text-slate-950 font-black text-sm sm:text-base flex items-center justify-center'
+            : 'text-base sm:text-xl font-black text-white px-1';
+          dayNumBadge.textContent = String(dayDate.getDate());
+
+          header.appendChild(weekdaySpan);
+          header.appendChild(dayNumBadge);
+          col.appendChild(header);
+
           const dayEvents = events
             .filter(ev => ev.date === isoDate)
             .sort((a, b) => {
@@ -769,31 +890,39 @@
             });
 
           const listWrap = document.createElement('div');
-          listWrap.className = 'flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1';
+          listWrap.className = 'flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1.5';
 
-          dayEvents.forEach(ev => {
-            const theme = getOwnerTheme(ev.owner);
-            const pill = document.createElement('div');
-            pill.className = `px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg border text-[11px] sm:text-xs lg:text-sm font-bold truncate ${theme.pillClass}`;
-            const prefix = ev.allDay ? '' : `${formatTime12or24(ev.startTime)} `;
-            pill.textContent = `${prefix}${ev.title}`;
-            pill.addEventListener('click', (e) => {
-              e.stopPropagation();
-              openDayModal(isoDate, ev);
+          if (dayEvents.length === 0) {
+            const emptyHint = document.createElement('div');
+            emptyHint.className = 'text-xs text-slate-400/70 italic pt-1';
+            emptyHint.textContent = 'No events';
+            listWrap.appendChild(emptyHint);
+          } else {
+            dayEvents.forEach(ev => {
+              const theme = getOwnerTheme(ev.owner);
+              const card = document.createElement('div');
+              card.className = `px-2 py-1.5 rounded-xl border text-xs sm:text-sm font-bold leading-snug ${theme.pillClass}`;
+              card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openDayModal(isoDate, ev);
+              });
+
+              const timeLabel = document.createElement('div');
+              timeLabel.className = 'clock-font text-[11px] sm:text-xs font-extrabold opacity-90';
+              timeLabel.textContent = ev.allDay ? 'All Day' : formatTime12or24(ev.startTime);
+
+              const titleLabel = document.createElement('div');
+              titleLabel.className = 'text-xs sm:text-sm lg:text-base font-black break-words';
+              titleLabel.textContent = ev.title;
+
+              card.appendChild(timeLabel);
+              card.appendChild(titleLabel);
+              listWrap.appendChild(card);
             });
-            listWrap.appendChild(pill);
-          });
+          }
 
-          cell.appendChild(listWrap);
-          grid.appendChild(cell);
-        }
-
-        // Trailing blank cells to keep grid visually balanced
-        const trailingCells = rowCount * 7 - totalCells;
-        for (let i = 0; i < trailingCells; i++) {
-          const emptyCell = document.createElement('div');
-          emptyCell.className = 'rounded-2xl bg-white/[0.03] border border-white/[0.06]';
-          grid.appendChild(emptyCell);
+          col.appendChild(listWrap);
+          grid.appendChild(col);
         }
       }
 
@@ -801,45 +930,51 @@
          6B. LARGE-FONT CHRONOLOGICAL SCHEDULE / AGENDA RENDERER
          ===================================================================== */
       function setCalendarView(viewMode) {
-        currentView = viewMode === 'schedule' ? 'schedule' : 'month';
+        if (viewMode === 'week') {
+          currentView = 'week';
+        } else if (viewMode === 'schedule') {
+          currentView = 'schedule';
+        } else {
+          currentView = 'month';
+        }
 
         const monthContainer = document.getElementById('monthViewContainer');
+        const weekContainer = document.getElementById('weekViewContainer');
         const scheduleContainer = document.getElementById('scheduleViewContainer');
+
         const monthBtn = document.getElementById('viewMonthBtn');
+        const weekBtn = document.getElementById('viewWeekBtn');
         const scheduleBtn = document.getElementById('viewScheduleBtn');
 
         const activeClasses = ['bg-amber-400', 'text-slate-950', 'shadow'];
         const inactiveClasses = ['text-slate-200', 'hover:text-white'];
 
-        if (currentView === 'schedule') {
-          if (monthContainer) monthContainer.classList.add('hidden');
-          if (scheduleContainer) scheduleContainer.classList.remove('hidden');
-          if (scheduleBtn) {
-            scheduleBtn.classList.add(...activeClasses);
-            scheduleBtn.classList.remove(...inactiveClasses);
+        if (monthContainer) monthContainer.classList.toggle('hidden', currentView !== 'month');
+        if (weekContainer) weekContainer.classList.toggle('hidden', currentView !== 'week');
+        if (scheduleContainer) scheduleContainer.classList.toggle('hidden', currentView !== 'schedule');
+
+        [
+          [monthBtn, currentView === 'month'],
+          [weekBtn, currentView === 'week'],
+          [scheduleBtn, currentView === 'schedule']
+        ].forEach(([btn, isActive]) => {
+          if (!btn) return;
+          if (isActive) {
+            btn.classList.add(...activeClasses);
+            btn.classList.remove(...inactiveClasses);
+          } else {
+            btn.classList.remove(...activeClasses);
+            btn.classList.add(...inactiveClasses);
           }
-          if (monthBtn) {
-            monthBtn.classList.remove(...activeClasses);
-            monthBtn.classList.add(...inactiveClasses);
-          }
-          renderScheduleView();
-        } else {
-          if (scheduleContainer) scheduleContainer.classList.add('hidden');
-          if (monthContainer) monthContainer.classList.remove('hidden');
-          if (monthBtn) {
-            monthBtn.classList.add(...activeClasses);
-            monthBtn.classList.remove(...inactiveClasses);
-          }
-          if (scheduleBtn) {
-            scheduleBtn.classList.remove(...activeClasses);
-            scheduleBtn.classList.add(...inactiveClasses);
-          }
-          renderMonthCalendar();
-        }
+        });
+
+        renderActiveView();
       }
 
       function renderActiveView() {
-        if (currentView === 'schedule') {
+        if (currentView === 'week') {
+          renderWeekView();
+        } else if (currentView === 'schedule') {
           renderScheduleView();
         } else {
           renderMonthCalendar();
@@ -1529,12 +1664,45 @@
 
         // View Toggle Buttons
         document.getElementById('viewMonthBtn').addEventListener('click', () => setCalendarView('month'));
+        document.getElementById('viewWeekBtn').addEventListener('click', () => setCalendarView('week'));
         document.getElementById('viewScheduleBtn').addEventListener('click', () => setCalendarView('schedule'));
         document.getElementById('scheduleAddBtn').addEventListener('click', () => openDayModal(toISODate(new Date())));
 
-        // Top Bar Controls
+        // Top Bar Controls (steps by week in Week view, or by month in Month/Schedule views)
         document.getElementById('prevMonthBtn').addEventListener('click', () => {
-          viewedMonthDate = new Date(viewedMonthDate.getFullYear(), viewedMonthDate.getMonth() - 1, 1);
+          if (currentView === 'week') {
+            viewedWeekAnchorDate = new Date(
+              viewedWeekAnchorDate.getFullYear(),
+              viewedWeekAnchorDate.getMonth(),
+              viewedWeekAnchorDate.getDate() - 7
+            );
+          } else {
+            viewedMonthDate = new Date(viewedMonthDate.getFullYear(), viewedMonthDate.getMonth() - 1, 1);
+            viewedWeekAnchorDate = new Date(viewedMonthDate.getFullYear(), viewedMonthDate.getMonth(), 1);
+          }
+          if (googleAccessToken) syncGoogleCalendars();
+          else renderActiveView();
+        });
+
+        document.getElementById('nextMonthBtn').addEventListener('click', () => {
+          if (currentView === 'week') {
+            viewedWeekAnchorDate = new Date(
+              viewedWeekAnchorDate.getFullYear(),
+              viewedWeekAnchorDate.getMonth(),
+              viewedWeekAnchorDate.getDate() + 7
+            );
+          } else {
+            viewedMonthDate = new Date(viewedMonthDate.getFullYear(), viewedMonthDate.getMonth() + 1, 1);
+            viewedWeekAnchorDate = new Date(viewedMonthDate.getFullYear(), viewedMonthDate.getMonth(), 1);
+          }
+          if (googleAccessToken) syncGoogleCalendars();
+          else renderActiveView();
+        });
+
+        document.getElementById('todayBtn').addEventListener('click', () => {
+          const now = new Date();
+          viewedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          viewedWeekAnchorDate = now;
           if (googleAccessToken) syncGoogleCalendars();
           else renderActiveView();
         });
