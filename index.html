@@ -454,6 +454,7 @@
          ===================================================================== */
       const STORAGE_SETTINGS = 'fwc_settings_v2';
       const STORAGE_EVENTS = 'fwc_events_v2';
+      const STORAGE_GOOGLE_SESSION = 'fwc_google_session_v1';
 
       const defaultSettings = {
         mineName: 'Me',
@@ -483,6 +484,14 @@
         }
       }
 
+      function removeStorageKey(key) {
+        try {
+          localStorage.removeItem(key);
+        } catch (err) {
+          console.warn('localStorage remove skipped:', err);
+        }
+      }
+
       let settings = { ...defaultSettings, ...loadJSON(STORAGE_SETTINGS, {}) };
       let currentView = 'month'; // 'month' | 'schedule'
       let viewedMonthDate = new Date();
@@ -492,11 +501,48 @@
       let wallpaperTimer = null;
 
       let googleAccessToken = null;
+      let googleTokenExpiresAt = 0;
       let tokenClient = null;
       let googleCalendars = [];
       let autoSyncTimer = null;
 
       let events = loadJSON(STORAGE_EVENTS, getSampleEvents());
+
+      function saveGoogleSession(token, expiresInSeconds, calendarsList) {
+        const expiresAt = Date.now() + (Number(expiresInSeconds) || 3500) * 1000;
+        googleAccessToken = token;
+        googleTokenExpiresAt = expiresAt;
+        if (Array.isArray(calendarsList)) {
+          googleCalendars = calendarsList;
+        }
+        saveJSON(STORAGE_GOOGLE_SESSION, {
+          accessToken: token,
+          expiresAt,
+          calendars: googleCalendars
+        });
+      }
+
+      function restoreGoogleSession() {
+        const savedSession = loadJSON(STORAGE_GOOGLE_SESSION, null);
+        if (!savedSession || !savedSession.accessToken) return false;
+
+        if (Array.isArray(savedSession.calendars)) {
+          googleCalendars = savedSession.calendars;
+        }
+
+        // Keep a 60-second safety margin before token expiration
+        if (savedSession.expiresAt && Date.now() < savedSession.expiresAt - 60000) {
+          googleAccessToken = savedSession.accessToken;
+          googleTokenExpiresAt = savedSession.expiresAt;
+          return true;
+        }
+
+        // Token expired; clear stale token while keeping cached calendar list
+        removeStorageKey(STORAGE_GOOGLE_SESSION);
+        googleAccessToken = null;
+        googleTokenExpiresAt = 0;
+        return false;
+      }
 
       /* =====================================================================
          3. DATE, TIME & THEME HELPERS
@@ -1181,7 +1227,7 @@
       /* =====================================================================
          8. GOOGLE CALENDAR OAUTH & SYNC (NO TASKS API)
          ===================================================================== */
-      function connectGoogleAccount() {
+      function connectGoogleAccount(silentPrompt = false) {
         const inputEl = document.getElementById('clientIdInput');
         const rawClientId = inputEl ? inputEl.value.trim() : settings.googleClientId.trim();
 
@@ -1203,7 +1249,11 @@
           scope: 'https://www.googleapis.com/auth/calendar',
           callback: async (tokenResponse) => {
             if (tokenResponse && tokenResponse.access_token) {
-              googleAccessToken = tokenResponse.access_token;
+              saveGoogleSession(
+                tokenResponse.access_token,
+                tokenResponse.expires_in,
+                googleCalendars
+              );
               updateGoogleConnectionUI(true);
               showToast('Connected to Google Calendar!');
               await loadUserCalendarsList();
@@ -1213,7 +1263,7 @@
           }
         });
 
-        tokenClient.requestAccessToken({ prompt: 'consent' });
+        tokenClient.requestAccessToken({ prompt: silentPrompt ? '' : 'consent' });
       }
 
       function disconnectGoogleAccount() {
@@ -1221,9 +1271,12 @@
           window.google.accounts.oauth2.revoke(googleAccessToken, () => {});
         }
         googleAccessToken = null;
+        googleTokenExpiresAt = 0;
+        googleCalendars = [];
+        removeStorageKey(STORAGE_GOOGLE_SESSION);
         clearInterval(autoSyncTimer);
         updateGoogleConnectionUI(false);
-        events = loadJSON(STORAGE_EVENTS, []);
+        events = loadJSON(STORAGE_EVENTS, getSampleEvents());
         renderActiveView();
         showToast('Disconnected from Google');
       }
@@ -1241,6 +1294,33 @@
         }
         if (disconnectBtn) disconnectBtn.classList.toggle('hidden', !isConnected);
         if (mapSection) mapSection.classList.toggle('hidden', !isConnected);
+
+        if (isConnected && googleCalendars.length > 0) {
+          populateCalendarDropdowns();
+        }
+      }
+
+      function populateCalendarDropdowns() {
+        const dropdownConfigs = [
+          { id: 'mapMineSelect', saved: settings.mapMineCalendarId, optional: false },
+          { id: 'mapWifeSelect', saved: settings.mapWifeCalendarId, optional: true },
+          { id: 'mapFamilySelect', saved: settings.mapFamilyCalendarId, optional: true }
+        ];
+
+        dropdownConfigs.forEach(({ id, saved, optional }) => {
+          const sel = document.getElementById(id);
+          if (!sel) return;
+          sel.innerHTML = optional ? '<option value="">-- None --</option>' : '';
+          googleCalendars.forEach(cal => {
+            const opt = document.createElement('option');
+            opt.value = cal.id;
+            opt.textContent = cal.summaryOverride || cal.summary;
+            if (cal.id === saved || (!saved && cal.primary && !optional)) {
+              opt.selected = true;
+            }
+            sel.appendChild(opt);
+          });
+        });
       }
 
       async function loadUserCalendarsList() {
@@ -1253,26 +1333,9 @@
           const data = await res.json();
           googleCalendars = data.items || [];
 
-          const dropdownConfigs = [
-            { id: 'mapMineSelect', saved: settings.mapMineCalendarId, optional: false },
-            { id: 'mapWifeSelect', saved: settings.mapWifeCalendarId, optional: true },
-            { id: 'mapFamilySelect', saved: settings.mapFamilyCalendarId, optional: true }
-          ];
-
-          dropdownConfigs.forEach(({ id, saved, optional }) => {
-            const sel = document.getElementById(id);
-            if (!sel) return;
-            sel.innerHTML = optional ? '<option value="">-- None --</option>' : '';
-            googleCalendars.forEach(cal => {
-              const opt = document.createElement('option');
-              opt.value = cal.id;
-              opt.textContent = cal.summaryOverride || cal.summary;
-              if (cal.id === saved || (!saved && cal.primary && !optional)) {
-                opt.selected = true;
-              }
-              sel.appendChild(opt);
-            });
-          });
+          const remainingSec = Math.max(60, Math.floor((googleTokenExpiresAt - Date.now()) / 1000));
+          saveGoogleSession(googleAccessToken, remainingSec, googleCalendars);
+          populateCalendarDropdowns();
         } catch (err) {
           console.error('Failed to load calendarList:', err);
         }
@@ -1312,6 +1375,14 @@
             const res = await fetch(url, {
               headers: { Authorization: `Bearer ${googleAccessToken}` }
             });
+            if (res.status === 401) {
+              // Token expired while page was open
+              removeStorageKey(STORAGE_GOOGLE_SESSION);
+              googleAccessToken = null;
+              updateGoogleConnectionUI(false);
+              showToast('Google session expired — open Settings to reconnect');
+              return;
+            }
             if (!res.ok) continue;
             const data = await res.json();
 
@@ -1352,6 +1423,7 @@
           }
 
           events = fetchedEvents;
+          saveJSON(STORAGE_EVENTS, events);
           renderActiveView();
         } catch (err) {
           console.error('Google sync error:', err);
@@ -1387,6 +1459,10 @@
         document.getElementById('clockFormatSelect').value = settings.clockFormat || '12';
         document.getElementById('wallpaperSelect').value = settings.wallpaperMode || 'rotate';
 
+        if (googleAccessToken && googleCalendars.length > 0) {
+          populateCalendarDropdowns();
+        }
+
         const modal = document.getElementById('settingsModal');
         if (modal) {
           modal.classList.remove('hidden');
@@ -1410,9 +1486,12 @@
         settings.wallpaperMode = document.getElementById('wallpaperSelect').value;
 
         if (googleAccessToken) {
-          settings.mapMineCalendarId = document.getElementById('mapMineSelect').value || 'primary';
-          settings.mapWifeCalendarId = document.getElementById('mapWifeSelect').value || '';
-          settings.mapFamilyCalendarId = document.getElementById('mapFamilySelect').value || '';
+          const mineSel = document.getElementById('mapMineSelect');
+          const wifeSel = document.getElementById('mapWifeSelect');
+          const famSel = document.getElementById('mapFamilySelect');
+          if (mineSel && mineSel.value) settings.mapMineCalendarId = mineSel.value;
+          if (wifeSel) settings.mapWifeCalendarId = wifeSel.value || '';
+          if (famSel) settings.mapFamilyCalendarId = famSel.value || '';
         }
 
         saveJSON(STORAGE_SETTINGS, settings);
@@ -1437,6 +1516,16 @@
 
         applyWallpaperPreference();
         renderActiveView();
+
+        // Restore saved Google OAuth token & calendar list across refreshes
+        const hasValidSession = restoreGoogleSession();
+        if (hasValidSession) {
+          updateGoogleConnectionUI(true);
+          syncGoogleCalendars();
+          startAutoRefresh();
+        } else {
+          updateGoogleConnectionUI(false);
+        }
 
         // View Toggle Buttons
         document.getElementById('viewMonthBtn').addEventListener('click', () => setCalendarView('month'));
@@ -1478,7 +1567,7 @@
         // Settings Modal Controls
         document.getElementById('closeSettingsBtn').addEventListener('click', closeSettingsModal);
         document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
-        document.getElementById('connectGoogleBtn').addEventListener('click', connectGoogleAccount);
+        document.getElementById('connectGoogleBtn').addEventListener('click', () => connectGoogleAccount(false));
         document.getElementById('disconnectGoogleBtn').addEventListener('click', disconnectGoogleAccount);
       });
     })();
