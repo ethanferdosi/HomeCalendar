@@ -3,24 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Family Wall Calendar &amp; Command Center</title>
-  <!-- Tailwind CSS for responsive layout & typography -->
+  <title>Family Wall Calendar</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Inter & JetBrains Mono for crisp digital clock digits -->
+  <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
-  <!-- Google Identity Services (GIS) for direct browser OAuth2 authentication -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+  <!-- Google Identity Services (GIS) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
-    /* Base typography & touch optimizations for Amazon Fire Tablet */
-    :root {
-      --glass-bg: rgba(15, 23, 42, 0.58);
-      --glass-card: rgba(15, 23, 42, 0.68);
-      --glass-border: rgba(255, 255, 255, 0.16);
-    }
-
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
@@ -30,11 +23,20 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
+      height: 100dvh;
+      height: 100vh;
+      overflow: hidden;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       color: #f8fafc;
-      background-color: #0f172a;
-      overflow-x: hidden;
+      background-color: #0b1120;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    @supports (height: 100dvh) {
+      html, body {
+        height: 100dvh;
+      }
     }
 
     .clock-font {
@@ -42,581 +44,433 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* Smooth crossfade background layers for wall-calendar photography */
+    /* Scenic Wall-Calendar Background Layers */
     .bg-layer {
       position: fixed;
       inset: 0;
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      transition: opacity 1.4s ease-in-out, transform 18s ease-out;
+      transition: opacity 1.2s ease-in-out;
       z-index: 0;
     }
 
-    .bg-overlay {
+    .bg-scrim {
       position: fixed;
       inset: 0;
       background: linear-gradient(
-        135deg,
-        rgba(9, 13, 24, 0.62) 0%,
-        rgba(15, 23, 42, 0.45) 50%,
-        rgba(9, 13, 24, 0.72) 100%
+        180deg,
+        rgba(8, 12, 24, 0.72) 0%,
+        rgba(10, 16, 30, 0.62) 50%,
+        rgba(8, 12, 24, 0.78) 100%
       );
       z-index: 1;
       pointer-events: none;
     }
 
-    /* Frosted glass panels */
-    .glass-panel {
-      background: var(--glass-bg);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid var(--glass-border);
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+    .glass-board {
+      background: rgba(15, 23, 42, 0.56);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
     }
 
-    .glass-subcard {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      transition: transform 0.15s ease, background-color 0.15s ease;
+    .glass-modal {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
     }
 
-    .glass-subcard:active {
-      transform: scale(0.99);
-      background: rgba(255, 255, 255, 0.14);
+    /* Hide scrollbars inside compact day cells while still permitting touch scroll if needed */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
     }
-
-    /* Custom subtle scrollbars for kitchen touch scrolling */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.04);
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.25);
-      border-radius: 9999px;
-    }
-
-    /* Prevent text selection on accidental fridge door touches */
-    .no-select {
-      user-select: none;
-      -webkit-user-select: none;
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between relative">
+<body class="relative flex flex-col">
 
-  <!-- Dual Background Image Layers for Seamless Scenic Wall-Calendar Crossfades -->
+  <!-- Scenic Background Photo Layers -->
   <div id="bgLayerA" class="bg-layer opacity-100"></div>
   <div id="bgLayerB" class="bg-layer opacity-0"></div>
-  <div class="bg-overlay"></div>
+  <div class="bg-scrim"></div>
 
-  <!-- Toast Notification Banner (Replaces alert/confirm) -->
-  <div id="toastBanner" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden px-6 py-3 rounded-2xl glass-panel text-white font-semibold text-base sm:text-lg shadow-2xl border border-white/25 transition-all">
-    <span id="toastMessage">Synced with Google Calendar</span>
+  <!-- Toast Status Pill -->
+  <div id="toastBanner" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden px-5 py-2.5 rounded-full glass-modal text-white font-bold text-sm sm:text-base shadow-2xl border border-amber-300/40">
+    <span id="toastMessage">Calendar synced</span>
   </div>
 
-  <!-- Floating Corner Clock & Date (Top-Right) -->
-  <div class="fixed top-3 right-3 sm:top-4 sm:right-5 z-30 glass-panel rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3 flex items-center gap-3 sm:gap-4 no-select">
-    <div class="text-right leading-tight">
-      <div id="currentDayName" class="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-amber-300">
-        Saturday
+  <!-- FULL-VIEWPORT WALL CALENDAR SHELL -->
+  <div class="relative z-10 flex flex-col w-full h-full p-2.5 sm:p-4 gap-2 sm:gap-3">
+
+    <!-- TOP BAR: Month Title & Nav (Left) + Digital Clock, Date & 3 Icon Controls (Right) -->
+    <header class="shrink-0 flex items-center justify-between gap-3 px-2 sm:px-3">
+
+      <!-- Left: Large Month/Year Title & Minimal Arrow Navigation -->
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div class="flex items-center gap-1">
+          <button id="prevMonthBtn" type="button" title="Previous Month" aria-label="Previous Month"
+            class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition cursor-pointer">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+          </button>
+          <button id="nextMonthBtn" type="button" title="Next Month" aria-label="Next Month"
+            class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition cursor-pointer">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+          </button>
+          <button id="todayBtn" type="button" title="Jump to Today" aria-label="Jump to Today"
+            class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-amber-300 flex items-center justify-center transition cursor-pointer">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Month / Schedule View Toggle -->
+        <div class="inline-flex items-center p-1 rounded-xl bg-slate-950/60 border border-white/15 shrink-0" role="group" aria-label="Calendar View">
+          <button id="viewMonthBtn" type="button"
+            class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm lg:text-base font-extrabold bg-amber-400 text-slate-950 shadow transition cursor-pointer">
+            Month
+          </button>
+          <button id="viewScheduleBtn" type="button"
+            class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm lg:text-base font-extrabold text-slate-200 hover:text-white transition cursor-pointer">
+            Schedule
+          </button>
+        </div>
       </div>
-      <div id="currentFullDate" class="text-sm sm:text-base font-semibold text-slate-100">
-        November 21, 2026
-      </div>
-    </div>
-    <div class="h-8 w-px bg-white/20"></div>
-    <div class="flex items-baseline gap-1">
-      <span id="clockTime" class="clock-font text-2xl sm:text-3xl xl:text-4xl font-bold tracking-tight text-white">
-        10:25
-      </span>
-      <div class="flex flex-col leading-none">
-        <span id="clockSeconds" class="clock-font text-xs sm:text-sm font-semibold text-sky-300">
-          00
-        </span>
-        <span id="clockAmPm" class="text-[10px] sm:text-xs font-bold uppercase text-slate-300 mt-0.5">
-          PM
-        </span>
-      </div>
-    </div>
-  </div>
 
-  <!-- Compact Icon-Only Controls (Top-Left: Settings, Fullscreen, Refresh) -->
-  <div class="fixed top-3 left-3 sm:top-4 sm:left-5 z-30 flex items-center gap-2 no-select">
-    <button id="openSettingsBtn" type="button" title="Settings & Google Sync" aria-label="Settings"
-      class="w-10 h-10 sm:w-11 sm:h-11 rounded-full glass-panel hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition cursor-pointer">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-      </svg>
-    </button>
+      <!-- Right: Digital Clock + Current Date + 3 Icon-Only Buttons (Refresh, Fullscreen, Settings) -->
+      <div class="flex items-center gap-3 sm:gap-5 shrink-0">
+        <!-- Digital Clock & Date -->
+        <div class="flex items-center gap-3 sm:gap-4 text-right">
+          <div class="hidden sm:block leading-tight">
+            <div id="headerDayName" class="text-sm lg:text-base font-extrabold uppercase tracking-wider text-amber-300">
+              Saturday
+            </div>
+            <div id="headerFullDate" class="text-base lg:text-xl font-bold text-slate-100">
+              Nov 21, 2026
+            </div>
+          </div>
 
-    <button id="fullscreenBtn" type="button" title="Toggle Fullscreen" aria-label="Toggle Fullscreen"
-      class="w-10 h-10 sm:w-11 sm:h-11 rounded-full glass-panel hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition cursor-pointer">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-      </svg>
-    </button>
-
-    <button id="syncNowBtn" type="button" title="Refresh Calendar" aria-label="Refresh Calendar"
-      class="w-10 h-10 sm:w-11 sm:h-11 rounded-full glass-panel hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition cursor-pointer">
-      <svg id="syncIcon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-      </svg>
-    </button>
-  </div>
-
-  <!-- FULL-SCREEN MONTHLY WALL CALENDAR CONTAINER -->
-  <div class="relative z-10 flex flex-col min-h-screen pt-16 sm:pt-20 pb-3 px-3 sm:px-5 lg:px-6 max-w-[1920px] w-full mx-auto">
-    <main class="flex-1 glass-panel rounded-3xl p-4 sm:p-6 flex flex-col min-h-0">
-      <!-- Month Header & Navigation Bar -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-white/15 no-select">
-        <div class="flex flex-wrap items-center gap-3 sm:gap-5">
-          <h1 id="monthGridTitle" class="text-3xl sm:text-4xl xl:text-5xl font-extrabold text-white tracking-tight">
-            November 2026
-          </h1>
-
-          <!-- Family Color Legend -->
-          <div id="legendContainer" class="flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/25 border border-sky-400/40 text-sky-100 text-xs sm:text-sm font-bold">
-              <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-              <span id="legendMineName">My Calendar</span>
+          <div class="flex items-baseline gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-slate-950/60 border border-white/15 shadow-lg">
+            <span id="clockTime" class="clock-font text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-none">
+              10:46
             </span>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/25 border border-rose-400/40 text-rose-100 text-xs sm:text-sm font-bold">
-              <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
-              <span id="legendWifeName">Wife's Calendar</span>
-            </span>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/25 border border-emerald-400/40 text-emerald-100 text-xs sm:text-sm font-bold">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-              <span>Family</span>
+            <span id="clockAmPm" class="text-xs sm:text-sm lg:text-base font-extrabold uppercase text-amber-300">
+              PM
             </span>
           </div>
         </div>
 
-        <!-- Month Navigation & Quick Add Event -->
-        <div class="flex items-center gap-2">
-          <button id="openAddEventBtn" type="button"
-            class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-extrabold text-sm sm:text-base shadow transition flex items-center gap-1.5 cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            <span>Add Event</span>
-          </button>
-
-          <button id="prevPeriodBtn" type="button" aria-label="Previous Month"
-            class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white transition cursor-pointer" title="Previous Month">
-            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        <!-- 3 Icon-Only Controls: Refresh, Fullscreen, Settings -->
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <button id="refreshBtn" type="button" title="Refresh Google Calendar" aria-label="Refresh Google Calendar"
+            class="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/12 hover:bg-white/25 active:scale-95 text-white flex items-center justify-center border border-white/15 transition cursor-pointer">
+            <svg id="refreshIcon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
           </button>
 
-          <button id="todayBtn" type="button"
-            class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 font-bold text-sm sm:text-base text-white transition cursor-pointer">
-            Today
+          <button id="fullscreenBtn" type="button" title="Toggle Fullscreen" aria-label="Toggle Fullscreen"
+            class="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/12 hover:bg-white/25 active:scale-95 text-white flex items-center justify-center border border-white/15 transition cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+            </svg>
           </button>
 
-          <button id="nextPeriodBtn" type="button" aria-label="Next Month"
-            class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white transition cursor-pointer" title="Next Month">
-            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          <button id="settingsBtn" type="button" title="Calendar Settings" aria-label="Calendar Settings"
+            class="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/12 hover:bg-white/25 active:scale-95 text-white flex items-center justify-center border border-white/15 transition cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
           </button>
         </div>
       </div>
+    </header>
 
-      <!-- Weekday Headers -->
-      <div class="grid grid-cols-7 gap-1.5 sm:gap-2 text-center font-extrabold text-sm sm:text-lg xl:text-xl uppercase tracking-wider text-amber-300 py-2.5 no-select">
-        <div>Sun</div>
-        <div>Mon</div>
-        <div>Tue</div>
-        <div>Wed</div>
-        <div>Thu</div>
-        <div>Fri</div>
-        <div>Sat</div>
+    <!-- MAIN FULL-SCREEN MONTHLY CALENDAR BOARD -->
+    <main class="flex-1 min-h-0 glass-board rounded-3xl p-2 sm:p-3.5 flex flex-col">
+      <!-- MONTHLY VIEW CONTAINER -->
+      <div id="monthViewContainer" class="flex-1 min-h-0 flex flex-col">
+        <!-- Day-of-Week Header Row (Monday First) -->
+        <div class="shrink-0 grid grid-cols-7 gap-1.5 sm:gap-2 pb-1.5 sm:pb-2 text-center font-extrabold text-xs sm:text-base lg:text-lg uppercase tracking-wider text-amber-300">
+          <div>Mon</div>
+          <div>Tue</div>
+          <div>Wed</div>
+          <div>Thu</div>
+          <div>Fri</div>
+          <div>Sat</div>
+          <div>Sun</div>
+        </div>
+
+        <!-- Month Grid: Dynamically sized rows with minmax(0, 1fr) so bottom weeks NEVER clip -->
+        <div id="monthGrid" class="flex-1 min-h-0 grid grid-cols-7 gap-1.5 sm:gap-2"></div>
       </div>
 
-      <!-- Full-Screen Monthly Days Grid -->
-      <div id="monthDaysGrid" class="flex-1 grid grid-cols-7 gap-1.5 sm:gap-2.5 auto-rows-fr min-h-[420px]">
-        <!-- Populated dynamically via JS -->
+      <!-- SCHEDULE / AGENDA VIEW CONTAINER -->
+      <div id="scheduleViewContainer" class="hidden flex-1 min-h-0 flex flex-col">
+        <div class="shrink-0 flex items-center justify-between gap-3 px-2 pb-2.5 sm:pb-3 border-b border-white/15">
+          <div class="text-sm sm:text-lg lg:text-xl font-extrabold uppercase tracking-wider text-amber-300">
+            Upcoming Family Schedule
+          </div>
+          <button id="scheduleAddBtn" type="button"
+            class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-xs sm:text-sm lg:text-base shadow cursor-pointer">
+            + Add Event
+          </button>
+        </div>
+        <div id="scheduleList" class="flex-1 min-h-0 overflow-y-auto no-scrollbar pt-3 space-y-3 sm:space-y-4"></div>
       </div>
     </main>
   </div>
 
-  <!-- MODAL 1: ADD / EDIT EVENT MODAL (Big Touch Controls) -->
-  <div id="eventModal" class="fixed inset-0 z-40 hidden items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
-    <div class="glass-panel rounded-3xl max-w-xl w-full p-6 sm:p-7 border border-white/25 shadow-2xl space-y-5">
-      <div class="flex items-center justify-between">
-        <h3 id="eventModalTitle" class="text-2xl sm:text-3xl font-extrabold text-white">New Family Event</h3>
-        <button id="closeEventModalBtn" type="button" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer">
+  <!-- MODAL 1: DAY AGENDA & ADD/EDIT EVENT MODAL -->
+  <div id="dayModal" class="fixed inset-0 z-40 hidden items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-sm">
+    <div class="glass-modal rounded-3xl w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden">
+      <!-- Modal Header -->
+      <div class="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/15">
+        <div>
+          <div class="text-xs font-extrabold uppercase tracking-wider text-amber-300">Family Schedule</div>
+          <h2 id="dayModalTitle" class="text-xl sm:text-2xl font-black text-white">Saturday, November 21, 2026</h2>
+        </div>
+        <button id="closeDayModalBtn" type="button" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      <form id="eventForm" class="space-y-4">
-        <input type="hidden" id="eventIdInput" />
+      <!-- Modal Body: Existing Events List + Quick Add/Edit Form -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+        <!-- Events on Selected Day -->
+        <div id="dayModalEventsList" class="space-y-2"></div>
 
-        <div>
-          <label class="block text-sm sm:text-base font-bold text-slate-200 mb-1.5">Event Title</label>
-          <input id="eventTitleInput" type="text" required placeholder="e.g., Soccer Practice, Dentist, Date Night"
-            class="w-full px-4 py-3.5 rounded-2xl bg-slate-950/75 border border-white/20 text-white text-lg sm:text-xl focus:outline-none focus:border-amber-400" />
-        </div>
+        <!-- Add / Edit Event Form -->
+        <form id="eventForm" class="space-y-3.5 pt-3 border-t border-white/15">
+          <div class="flex items-center justify-between">
+            <h3 id="eventFormHeading" class="text-lg font-extrabold text-amber-300">+ Schedule Event</h3>
+            <button id="resetFormBtn" type="button" class="hidden text-xs font-bold px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 cursor-pointer">
+              + New Event Instead
+            </button>
+          </div>
 
-        <!-- Who's Calendar Selector -->
-        <div>
-          <label class="block text-sm sm:text-base font-bold text-slate-200 mb-1.5">Assign Calendar</label>
-          <div class="grid grid-cols-3 gap-2.5">
+          <input type="hidden" id="editEventId" />
+
+          <div>
+            <input id="eventTitleInput" type="text" required placeholder="Event title (e.g., Soccer Practice, Dinner)"
+              class="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border border-white/20 text-white text-base sm:text-lg font-semibold focus:outline-none focus:border-amber-400" />
+          </div>
+
+          <!-- Calendar Owner Selector -->
+          <div class="grid grid-cols-3 gap-2">
             <label class="cursor-pointer">
               <input type="radio" name="eventOwner" value="mine" class="peer hidden" checked />
-              <div class="py-3 px-3 rounded-2xl border border-white/20 bg-white/5 peer-checked:bg-sky-500/35 peer-checked:border-sky-400 text-center font-bold text-base sm:text-lg text-white transition">
-                <span id="radioMineLabel">Mine</span>
+              <div class="py-2.5 px-2 rounded-xl border border-white/20 bg-white/5 peer-checked:bg-sky-500/35 peer-checked:border-sky-400 text-center font-bold text-sm sm:text-base text-white transition">
+                <span id="formMineLabel">Me</span>
               </div>
             </label>
             <label class="cursor-pointer">
               <input type="radio" name="eventOwner" value="wife" class="peer hidden" />
-              <div class="py-3 px-3 rounded-2xl border border-white/20 bg-white/5 peer-checked:bg-rose-500/35 peer-checked:border-rose-400 text-center font-bold text-base sm:text-lg text-white transition">
-                <span id="radioWifeLabel">Wife</span>
+              <div class="py-2.5 px-2 rounded-xl border border-white/20 bg-white/5 peer-checked:bg-rose-500/35 peer-checked:border-rose-400 text-center font-bold text-sm sm:text-base text-white transition">
+                <span id="formWifeLabel">Wife</span>
               </div>
             </label>
             <label class="cursor-pointer">
               <input type="radio" name="eventOwner" value="family" class="peer hidden" />
-              <div class="py-3 px-3 rounded-2xl border border-white/20 bg-white/5 peer-checked:bg-emerald-500/35 peer-checked:border-emerald-400 text-center font-bold text-base sm:text-lg text-white transition">
+              <div class="py-2.5 px-2 rounded-xl border border-white/20 bg-white/5 peer-checked:bg-emerald-500/35 peer-checked:border-emerald-400 text-center font-bold text-sm sm:text-base text-white transition">
                 <span>Family</span>
               </div>
             </label>
           </div>
-        </div>
 
-        <!-- Date & All-Day Toggle -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm sm:text-base font-bold text-slate-200 mb-1.5">Date</label>
+          <!-- Date & All-Day Toggle -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input id="eventDateInput" type="date" required
-              class="w-full px-4 py-3.5 rounded-2xl bg-slate-950/75 border border-white/20 text-white text-lg focus:outline-none focus:border-amber-400" />
-          </div>
-          <div class="flex items-end">
-            <label class="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl bg-slate-950/55 border border-white/15 cursor-pointer">
-              <span class="text-base sm:text-lg font-bold text-slate-200">All-Day Event</span>
-              <input id="eventAllDayInput" type="checkbox" class="w-6 h-6 accent-amber-400 rounded" />
+              class="w-full px-4 py-2.5 rounded-xl bg-slate-950/80 border border-white/20 text-white text-base font-semibold focus:outline-none focus:border-amber-400" />
+
+            <label class="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/15 cursor-pointer">
+              <span class="text-sm sm:text-base font-bold text-slate-200">All-Day Event</span>
+              <input id="eventAllDayInput" type="checkbox" class="w-5 h-5 accent-amber-400 rounded" />
             </label>
           </div>
-        </div>
 
-        <!-- Start & End Time -->
-        <div id="timeInputsRow" class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm sm:text-base font-bold text-slate-200 mb-1.5">Start Time</label>
-            <input id="eventStartTimeInput" type="time" value="09:00"
-              class="w-full px-4 py-3.5 rounded-2xl bg-slate-950/75 border border-white/20 text-white text-lg focus:outline-none focus:border-amber-400" />
+          <!-- Start & End Time -->
+          <div id="eventTimeRow" class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Start Time</label>
+              <input id="eventStartInput" type="time" value="09:00"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/20 text-white text-base font-semibold focus:outline-none focus:border-amber-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">End Time</label>
+              <input id="eventEndInput" type="time" value="10:00"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/20 text-white text-base font-semibold focus:outline-none focus:border-amber-400" />
+            </div>
           </div>
-          <div>
-            <label class="block text-sm sm:text-base font-bold text-slate-200 mb-1.5">End Time</label>
-            <input id="eventEndTimeInput" type="time" value="10:00"
-              class="w-full px-4 py-3.5 rounded-2xl bg-slate-950/75 border border-white/20 text-white text-lg focus:outline-none focus:border-amber-400" />
-          </div>
-        </div>
 
-        <div>
-          <label class="block text-sm sm:text-base font-bold text-slate-200 mb-1.5">Location / Notes (Optional)</label>
-          <input id="eventLocationInput" type="text" placeholder="e.g., Community Center, Room 4"
-            class="w-full px-4 py-3 rounded-2xl bg-slate-950/75 border border-white/20 text-white text-base sm:text-lg focus:outline-none focus:border-amber-400" />
-        </div>
-
-        <div class="flex items-center justify-between gap-3 pt-2">
-          <button id="deleteEventBtn" type="button"
-            class="hidden px-5 py-3.5 rounded-2xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-base sm:text-lg transition cursor-pointer">
-            Delete
-          </button>
-          <div class="flex items-center gap-3 ml-auto">
-            <button id="cancelEventBtn" type="button"
-              class="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-base sm:text-lg transition cursor-pointer">
-              Cancel
+          <div class="flex items-center justify-between gap-2 pt-2">
+            <button id="deleteEventBtn" type="button"
+              class="hidden px-4 py-3 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-sm sm:text-base cursor-pointer">
+              Delete Event
             </button>
             <button type="submit"
-              class="px-7 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-base sm:text-lg shadow-lg transition cursor-pointer">
+              class="ml-auto px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base shadow-lg cursor-pointer">
               Save Event
             </button>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
 
-  <!-- MODAL 2: GOOGLE CALENDAR TWO-WAY SYNC & WALLPAPER SETTINGS -->
-  <div id="settingsModal" class="fixed inset-0 z-40 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-    <div class="glass-panel rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 border border-white/25 shadow-2xl space-y-6">
-      <div class="flex items-center justify-between border-b border-white/15 pb-4">
-        <div>
-          <h3 class="text-2xl sm:text-3xl font-extrabold text-white">Wall Calendar &amp; Google Sync</h3>
-          <p class="text-sm sm:text-base text-slate-300">Connect your &amp; your wife's Gmail calendars for live two-way updates</p>
-        </div>
-        <button id="closeSettingsModalBtn" type="button" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer">
+  <!-- MODAL 2: SETTINGS & GOOGLE CALENDAR SYNC -->
+  <div id="settingsModal" class="fixed inset-0 z-40 hidden items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-sm">
+    <div class="glass-modal rounded-3xl w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/15">
+        <h2 class="text-xl sm:text-2xl font-black text-white">Wall Calendar Settings</h2>
+        <button id="closeSettingsBtn" type="button" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      <!-- Display Names & Clock Preferences -->
-      <div class="space-y-3">
-        <h4 class="text-lg font-bold text-amber-300">1. Display Labels &amp; Clock Format</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label class="block text-sm font-semibold text-slate-300 mb-1">Your Display Name</label>
-            <input id="settingMineName" type="text" value="My Calendar"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/75 border border-white/20 text-white text-base" />
+      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+        <!-- Google OAuth Connection -->
+        <div class="p-4 rounded-2xl bg-slate-950/65 border border-white/15 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base sm:text-lg font-extrabold text-sky-300">Google Calendar Two-Way Sync</h3>
+            <span id="googleStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300">
+              Not Connected
+            </span>
           </div>
+
           <div>
-            <label class="block text-sm font-semibold text-slate-300 mb-1">Wife's Display Name</label>
-            <input id="settingWifeName" type="text" value="Wife's Calendar"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/75 border border-white/20 text-white text-base" />
+            <label class="block text-xs font-bold text-slate-300 mb-1">Google OAuth 2.0 Client ID (Web Application)</label>
+            <input id="clientIdInput" type="text" placeholder="1234567890-abcdef.apps.googleusercontent.com"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/20 text-white text-sm font-mono focus:outline-none focus:border-sky-400" />
           </div>
-          <div>
-            <label class="block text-sm font-semibold text-slate-300 mb-1">Clock Style</label>
-            <select id="settingClockFormat"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/75 border border-white/20 text-white text-base">
-              <option value="12">12-Hour (AM/PM)</option>
-              <option value="24">24-Hour Military</option>
-            </select>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button id="connectGoogleBtn" type="button"
+              class="px-5 py-2.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 font-extrabold text-sm sm:text-base cursor-pointer">
+              Connect Google Account
+            </button>
+            <button id="disconnectGoogleBtn" type="button"
+              class="hidden px-4 py-2.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 font-bold text-sm cursor-pointer">
+              Disconnect
+            </button>
+          </div>
+
+          <!-- Calendar Mapping Selectors (Visible after sign-in) -->
+          <div id="calendarMappingSection" class="hidden pt-3 border-t border-white/15 space-y-3">
+            <p class="text-xs font-bold text-emerald-300">Select which Google Calendars to display &amp; sync:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-xs font-bold text-sky-300 mb-1">My Calendar (Blue)</label>
+                <select id="mapMineSelect" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/20 text-white text-sm"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-rose-300 mb-1">Wife's Calendar (Coral)</label>
+                <select id="mapWifeSelect" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/20 text-white text-sm"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-emerald-300 mb-1">Family Calendar (Green)</label>
+                <select id="mapFamilySelect" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/20 text-white text-sm"></select>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Wallpaper Rotation Settings -->
-      <div class="space-y-3">
-        <h4 class="text-lg font-bold text-amber-300">2. Wall-Calendar Background Pictures</h4>
+        <!-- Names, Clock & Background Preferences -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-semibold text-slate-300 mb-1">Auto-Change Photo Every</label>
-            <select id="settingWallpaperInterval"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/75 border border-white/20 text-white text-base">
-              <option value="60000">1 Minute</option>
-              <option value="300000" selected>5 Minutes</option>
-              <option value="900000">15 Minutes</option>
-              <option value="3600000">1 Hour</option>
-              <option value="0">Keep Current Photo</option>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Your Label</label>
+            <input id="mineNameInput" type="text" value="Me"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/20 text-white text-sm font-semibold" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Wife's Label</label>
+            <input id="wifeNameInput" type="text" value="Wife"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/20 text-white text-sm font-semibold" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Clock Format</label>
+            <select id="clockFormatSelect" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/20 text-white text-sm font-semibold">
+              <option value="12">12-Hour (AM / PM)</option>
+              <option value="24">24-Hour</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-semibold text-slate-300 mb-1">Auto-Sync Calendar Every</label>
-            <select id="settingSyncInterval"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/75 border border-white/20 text-white text-base">
-              <option value="30000" selected>30 Seconds (Real-time)</option>
-              <option value="60000">1 Minute</option>
-              <option value="300000">5 Minutes</option>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Wall Background Photo</label>
+            <select id="wallpaperSelect" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/20 text-white text-sm font-semibold">
+              <option value="rotate">Auto-Rotate Scenic Photos</option>
+              <option value="0">Yosemite Valley Sunrise</option>
+              <option value="1">Misty Forest Ridge</option>
+              <option value="2">Alpine Peaks</option>
+              <option value="3">Crystal Mountain Lake</option>
+              <option value="4">Coastal Horizon</option>
             </select>
           </div>
         </div>
       </div>
 
-      <!-- Google OAuth2 Direct Browser Sync -->
-      <div class="space-y-3 bg-slate-950/55 p-4 rounded-2xl border border-white/15">
-        <div class="flex items-center justify-between">
-          <h4 class="text-lg font-bold text-sky-300">3. Google Calendar Two-Way Sync</h4>
-          <span id="googleAuthStatus" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300">
-            Not Connected
-          </span>
-        </div>
-
-        <p class="text-sm text-slate-300 leading-relaxed">
-          To sync directly with Google Calendar without a backend server, paste a free <strong>Google OAuth Client ID</strong> (Web Application type) from Google Cloud Console with the <strong>Google Calendar API</strong> enabled.
-        </p>
-
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-1">Google OAuth 2.0 Client ID</label>
-          <input id="settingGoogleClientId" type="text" placeholder="1234567890-abcdefg.apps.googleusercontent.com"
-            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/20 text-white text-sm font-mono" />
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3 pt-1">
-          <button id="connectGoogleBtn" type="button"
-            class="px-5 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold text-base transition cursor-pointer">
-            Connect Google Account
-          </button>
-          <button id="disconnectGoogleBtn" type="button"
-            class="hidden px-4 py-3 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 font-bold text-sm transition cursor-pointer">
-            Disconnect
-          </button>
-        </div>
-
-        <!-- Calendar Mapping Dropdowns (Shown once connected to Google) -->
-        <div id="googleCalendarMappingBox" class="hidden pt-3 border-t border-white/15 space-y-3">
-          <p class="text-sm font-semibold text-emerald-300">Choose which Google Calendars map to each person:</p>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-sky-300 mb-1">My Google Calendar</label>
-              <select id="mapMineCalendar" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/20 text-white text-sm"></select>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-rose-300 mb-1">Wife's Shared Calendar</label>
-              <select id="mapWifeCalendar" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/20 text-white text-sm"></select>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-emerald-300 mb-1">Family Calendar</label>
-              <select id="mapFamilyCalendar" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/20 text-white text-sm"></select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-3 pt-2">
+      <div class="shrink-0 flex justify-end px-5 py-4 border-t border-white/15">
         <button id="saveSettingsBtn" type="button"
-          class="px-6 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-base sm:text-lg shadow transition cursor-pointer">
-          Save &amp; Apply
+          class="px-6 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base shadow-lg cursor-pointer">
+          Save &amp; Close
         </button>
       </div>
     </div>
   </div>
 
-  <!-- APPLICATION LOGIC -->
+  <!-- APPLICATION SCRIPT -->
   <script>
     (function () {
       'use strict';
 
       /* =====================================================================
-         1. CURATED SCENIC WALL-CALENDAR PHOTOGRAPHY
-         High-resolution landscape nature photographs with safe fallbacks
+         1. SCENIC WALL-CALENDAR BACKGROUNDS
          ===================================================================== */
       const WALLPAPERS = [
-        {
-          url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Yosemite Valley Sunrise'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Misty Morning Forest Ridge'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Alpine Peaks & Golden Light'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Crystal Mountain Lake Reflection'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Sunbeams Through Woodland Pines'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Peaceful Coastal Horizon'
-        }
+        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80',
+        'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80',
+        'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80',
+        'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1920&q=80',
+        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80'
       ];
 
       /* =====================================================================
-         2. STATE & LOCAL STORAGE PERSISTENCE
+         2. PERSISTENT STATE
          ===================================================================== */
-      const STORAGE_KEYS = {
-        SETTINGS: 'familyWall_settings_v1',
-        LOCAL_EVENTS: 'familyWall_events_v1'
-      };
+      const STORAGE_SETTINGS = 'fwc_settings_v2';
+      const STORAGE_EVENTS = 'fwc_events_v2';
 
       const defaultSettings = {
-        mineName: 'My Calendar',
-        wifeName: "Wife's Calendar",
+        mineName: 'Me',
+        wifeName: 'Wife',
         clockFormat: '12',
-        wallpaperInterval: 300000,
-        syncInterval: 30000,
+        wallpaperMode: 'rotate',
         googleClientId: '',
         mapMineCalendarId: 'primary',
         mapWifeCalendarId: '',
         mapFamilyCalendarId: ''
       };
 
-      let settings = { ...defaultSettings, ...loadJSON(STORAGE_KEYS.SETTINGS, {}) };
-      let referenceDate = new Date(); // Tracks currently viewed month
-      let wallpaperIndex = 0;
-      let activeBgLayer = 'A';
-      let wallpaperTimer = null;
-      let syncTimer = null;
-
-      // Google OAuth & Live API State
-      let tokenClient = null;
-      let googleAccessToken = null;
-      let googleCalendarsList = [];
-
-      // Events Data Array
-      let events = loadJSON(STORAGE_KEYS.LOCAL_EVENTS, null);
-
-      // Seed helpful starter family events on first launch so the monthly grid looks rich immediately
-      if (!events) {
-        const todayStr = toISODate(new Date());
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = toISODate(tomorrow);
-        const dayAfter = new Date();
-        dayAfter.setDate(dayAfter.getDate() + 2);
-        const dayAfterStr = toISODate(dayAfter);
-
-        events = [
-          {
-            id: 'local-1',
-            title: 'Morning Coffee & Meal Plan',
-            owner: 'family',
-            date: todayStr,
-            allDay: false,
-            startTime: '08:30',
-            endTime: '09:15',
-            location: 'Kitchen'
-          },
-          {
-            id: 'local-2',
-            title: 'Dentist Checkup',
-            owner: 'wife',
-            date: todayStr,
-            allDay: false,
-            startTime: '14:00',
-            endTime: '15:00',
-            location: 'Main Street Dental'
-          },
-          {
-            id: 'local-3',
-            title: 'Pick Up Groceries',
-            owner: 'mine',
-            date: todayStr,
-            allDay: false,
-            startTime: '17:30',
-            endTime: '18:15',
-            location: 'Market'
-          },
-          {
-            id: 'local-4',
-            title: 'Family Dinner Night',
-            owner: 'family',
-            date: tomorrowStr,
-            allDay: false,
-            startTime: '18:30',
-            endTime: '20:30',
-            location: 'Home'
-          },
-          {
-            id: 'local-5',
-            title: 'School Spirit Day',
-            owner: 'family',
-            date: dayAfterStr,
-            allDay: true,
-            startTime: '',
-            endTime: '',
-            location: ''
-          }
-        ];
-        saveJSON(STORAGE_KEYS.LOCAL_EVENTS, events);
-      }
-
-      /* =====================================================================
-         3. UTILITY HELPERS
-         ===================================================================== */
       function loadJSON(key, fallback) {
         try {
           const raw = localStorage.getItem(key);
           return raw ? JSON.parse(raw) : fallback;
-        } catch (e) {
+        } catch (err) {
           return fallback;
         }
       }
@@ -624,11 +478,29 @@
       function saveJSON(key, value) {
         try {
           localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-          console.warn('Storage quota exceeded or blocked:', e);
+        } catch (err) {
+          console.warn('localStorage write skipped:', err);
         }
       }
 
+      let settings = { ...defaultSettings, ...loadJSON(STORAGE_SETTINGS, {}) };
+      let currentView = 'month'; // 'month' | 'schedule'
+      let viewedMonthDate = new Date();
+      let selectedDayISO = toISODate(new Date());
+      let wallpaperIdx = 0;
+      let activeBgLayer = 'A';
+      let wallpaperTimer = null;
+
+      let googleAccessToken = null;
+      let tokenClient = null;
+      let googleCalendars = [];
+      let autoSyncTimer = null;
+
+      let events = loadJSON(STORAGE_EVENTS, getSampleEvents());
+
+      /* =====================================================================
+         3. DATE, TIME & THEME HELPERS
+         ===================================================================== */
       function toISODate(dateObj) {
         const y = dateObj.getFullYear();
         const m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -636,10 +508,47 @@
         return `${y}-${m}-${d}`;
       }
 
-      function formatTimeDisplay(time24) {
+      function getSampleEvents() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const todayStr = toISODate(now);
+        return [
+          {
+            id: 'sample-1',
+            title: 'Family Dinner',
+            owner: 'family',
+            date: todayStr,
+            allDay: false,
+            startTime: '18:30',
+            endTime: '20:00'
+          },
+          {
+            id: 'sample-2',
+            title: 'Dentist Checkup',
+            owner: 'mine',
+            date: `${y}-${m}-12`,
+            allDay: false,
+            startTime: '10:00',
+            endTime: '11:00'
+          },
+          {
+            id: 'sample-3',
+            title: 'Yoga Class',
+            owner: 'wife',
+            date: `${y}-${m}-18`,
+            allDay: false,
+            startTime: '17:30',
+            endTime: '18:30'
+          }
+        ];
+      }
+
+      function formatTime12or24(time24) {
         if (!time24) return '';
         const [hStr, mStr] = time24.split(':');
         let h = parseInt(hStr, 10);
+        if (isNaN(h)) return time24;
         if (settings.clockFormat === '24') {
           return `${String(h).padStart(2, '0')}:${mStr}`;
         }
@@ -648,927 +557,545 @@
         return `${h}:${mStr} ${suffix}`;
       }
 
-      function showToast(msg) {
-        const banner = document.getElementById('toastBanner');
-        const textEl = document.getElementById('toastMessage');
-        textEl.textContent = msg;
-        banner.classList.remove('hidden');
-        clearTimeout(banner._hideTimer);
-        banner._hideTimer = setTimeout(() => {
-          banner.classList.add('hidden');
-        }, 3200);
-      }
-
-      /* =====================================================================
-         4. DIGITAL CLOCK & DATE ENGINE (Updates Every Second)
-         ===================================================================== */
-      function updateClock() {
-        const now = new Date();
-        let hours = now.getHours();
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-
-        const ampmEl = document.getElementById('clockAmPm');
-        if (settings.clockFormat === '12') {
-          const ampm = hours >= 12 ? 'PM' : 'AM';
-          hours = hours % 12 || 12;
-          ampmEl.textContent = ampm;
-          ampmEl.classList.remove('hidden');
-        } else {
-          ampmEl.classList.add('hidden');
-        }
-
-        document.getElementById('clockTime').textContent = `${String(hours).padStart(2, '0')}:${minutes}`;
-        document.getElementById('clockSeconds').textContent = seconds;
-
-        const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
-        const fullDate = now.toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric'
-        });
-        document.getElementById('currentDayName').textContent = dayName;
-        document.getElementById('currentFullDate').textContent = fullDate;
-      }
-
-      /* =====================================================================
-         5. WALL-CALENDAR SCENIC BACKGROUND ROTATOR
-         ===================================================================== */
-      function applyWallpaper(index) {
-        const item = WALLPAPERS[index % WALLPAPERS.length];
-        const layerA = document.getElementById('bgLayerA');
-        const layerB = document.getElementById('bgLayerB');
-
-        const img = new Image();
-        img.onload = () => {
-          if (activeBgLayer === 'A') {
-            layerB.style.backgroundImage = `url('${item.url}')`;
-            layerB.classList.replace('opacity-0', 'opacity-100');
-            layerA.classList.replace('opacity-100', 'opacity-0');
-            activeBgLayer = 'B';
-          } else {
-            layerA.style.backgroundImage = `url('${item.url}')`;
-            layerA.classList.replace('opacity-0', 'opacity-100');
-            layerB.classList.replace('opacity-100', 'opacity-0');
-            activeBgLayer = 'A';
-          }
-        };
-        img.onerror = () => {
-          layerA.style.background = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
-        };
-        img.src = item.url;
-      }
-
-      function nextWallpaper() {
-        wallpaperIndex = (wallpaperIndex + 1) % WALLPAPERS.length;
-        applyWallpaper(wallpaperIndex);
-      }
-
-      function resetWallpaperTimer() {
-        clearInterval(wallpaperTimer);
-        const interval = parseInt(settings.wallpaperInterval, 10);
-        if (interval > 0) {
-          wallpaperTimer = setInterval(nextWallpaper, interval);
-        }
-      }
-
-      /* =====================================================================
-         6. RENDER FULL-SCREEN MONTHLY WALL CALENDAR GRID
-         ===================================================================== */
-      function getOwnerStyle(owner) {
+      function getOwnerTheme(owner) {
         if (owner === 'wife') {
           return {
-            label: settings.wifeName,
-            badgeBg: 'bg-rose-500/35 border-rose-300/60 text-rose-50'
+            label: settings.wifeName || 'Wife',
+            pillClass: 'bg-rose-500/35 border-rose-300/60 text-rose-50'
           };
         }
         if (owner === 'family') {
           return {
             label: 'Family',
-            badgeBg: 'bg-emerald-500/35 border-emerald-300/60 text-emerald-50'
+            pillClass: 'bg-emerald-500/35 border-emerald-300/60 text-emerald-50'
           };
         }
         return {
-          label: settings.mineName,
-          badgeBg: 'bg-sky-500/35 border-sky-300/60 text-sky-50'
+          label: settings.mineName || 'Me',
+          pillClass: 'bg-sky-500/35 border-sky-300/60 text-sky-50'
         };
       }
 
-      function renderCalendar() {
-        document.getElementById('legendMineName').textContent = settings.mineName;
-        document.getElementById('legendWifeName').textContent = settings.wifeName;
-        document.getElementById('radioMineLabel').textContent = settings.mineName;
-        document.getElementById('radioWifeLabel').textContent = settings.wifeName;
-
-        renderMonthGridView();
-      }
-
-      function renderMonthGridView() {
-        const year = referenceDate.getFullYear();
-        const month = referenceDate.getMonth();
-        document.getElementById('monthGridTitle').textContent = referenceDate.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric'
-        });
-
-        const grid = document.getElementById('monthDaysGrid');
-        grid.innerHTML = '';
-
-        const firstDayOfWeek = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const todayISO = toISODate(new Date());
-
-        // Leading empty cells
-        for (let i = 0; i < firstDayOfWeek; i++) {
-          const blank = document.createElement('div');
-          blank.className = 'rounded-2xl bg-white/5 border border-white/5 opacity-35';
-          grid.appendChild(blank);
-        }
-
-        for (let day = 1; day <= daysInMonth; day++) {
-          const cellDate = new Date(year, month, day);
-          const iso = toISODate(cellDate);
-          const isToday = iso === todayISO;
-          const dayEvents = events
-            .filter(ev => ev.date === iso)
-            .sort((a, b) => {
-              if (a.allDay && !b.allDay) return -1;
-              if (!a.allDay && b.allDay) return 1;
-              return (a.startTime || '').localeCompare(b.startTime || '');
-            });
-
-          const cell = document.createElement('div');
-          cell.className = `rounded-2xl p-2 sm:p-3 flex flex-col justify-between border transition cursor-pointer overflow-hidden ${
-            isToday
-              ? 'bg-amber-400/25 border-amber-300 shadow-lg'
-              : 'bg-slate-950/45 hover:bg-slate-900/60 border-white/15'
-          }`;
-          cell.addEventListener('click', () => openNewEventModal(iso));
-
-          const header = document.createElement('div');
-          header.className = 'flex items-center justify-between mb-1';
-          header.innerHTML = `
-            <span class="text-lg sm:text-2xl xl:text-3xl font-extrabold leading-none ${isToday ? 'text-amber-300' : 'text-white'}">${day}</span>
-            ${dayEvents.length > 0 ? `<span class="text-xs sm:text-sm font-bold px-2 py-0.5 rounded-full bg-white/15 text-slate-100">${dayEvents.length}</span>` : ''}
-          `;
-          cell.appendChild(header);
-
-          const pills = document.createElement('div');
-          pills.className = 'flex-1 space-y-1 overflow-y-auto pr-0.5';
-
-          dayEvents.forEach(ev => {
-            const style = getOwnerStyle(ev.owner);
-            const timePrefix = !ev.allDay && ev.startTime ? `${formatTimeDisplay(ev.startTime)} ` : '';
-            const pill = document.createElement('div');
-            pill.className = `px-2 py-1 rounded-lg text-xs sm:text-sm xl:text-base font-bold truncate border leading-snug ${style.badgeBg}`;
-            pill.textContent = `${timePrefix}${ev.title}`;
-            pill.title = `${timePrefix}${ev.title}${ev.location ? ' @ ' + ev.location : ''}`;
-            pill.addEventListener('click', (e) => {
-              e.stopPropagation();
-              openEditEventModal(ev);
-            });
-            pills.appendChild(pill);
-          });
-
-          cell.appendChild(pills);
-          grid.appendChild(cell);
-        }
+      let toastTimeout = null;
+      function showToast(msg) {
+        const banner = document.getElementById('toastBanner');
+        const textEl = document.getElementById('toastMessage');
+        if (!banner || !textEl) return;
+        textEl.textContent = msg;
+        banner.classList.remove('hidden');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          banner.classList.add('hidden');
+        }, 3200);
       }
 
       /* =====================================================================
-         7. ADD / EDIT / DELETE EVENTS (Local + Two-Way Google Calendar Sync)
+         4. DIGITAL CLOCK & HEADER DATE
          ===================================================================== */
-      const WALLPAPERS = [
-        {
-          url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Yosemite Valley Sunrise'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Misty Morning Forest Ridge'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Alpine Peaks & Golden Light'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Crystal Mountain Lake Reflection'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Sunbeams Through Woodland Pines'
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80',
-          caption: 'Peaceful Coastal Horizon'
-        }
-      ];
+      function updateClock() {
+        const now = new Date();
+        const timeEl = document.getElementById('clockTime');
+        const ampmEl = document.getElementById('clockAmPm');
+        const dayEl = document.getElementById('headerDayName');
+        const dateEl = document.getElementById('headerFullDate');
 
-      /* =====================================================================
-         2. STATE & LOCAL STORAGE PERSISTENCE
-         ===================================================================== */
-      const STORAGE_KEYS = {
-        SETTINGS: 'familyWall_settings_v1',
-        LOCAL_EVENTS: 'familyWall_events_v1',
-        LOCAL_TASKS: 'familyWall_tasks_v1'
-      };
+        let hours = now.getHours();
+        const mins = String(now.getMinutes()).padStart(2, '0');
 
-      const defaultSettings = {
-        mineName: 'My Calendar',
-        wifeName: "Wife's Calendar",
-        clockFormat: '12',
-        wallpaperInterval: 300000,
-        syncInterval: 30000,
-        googleClientId: '',
-        mapMineCalendarId: 'primary',
-        mapWifeCalendarId: '',
-        mapFamilyCalendarId: ''
-      };
-
-      let settings = { ...defaultSettings, ...loadJSON(STORAGE_KEYS.SETTINGS, {}) };
-      let currentView = 'agenda'; // 'agenda' | 'month'
-      let referenceDate = new Date(); // Tracks currently viewed month/week
-      let wallpaperIndex = 0;
-      let activeBgLayer = 'A';
-      let wallpaperTimer = null;
-      let syncTimer = null;
-
-      // Google OAuth & Live API State
-      let tokenClient = null;
-      let googleAccessToken = null;
-      let googleCalendarsList = [];
-      let googleDefaultTaskListId = '@default';
-
-      // Events & Tasks Data Arrays
-      let events = loadJSON(STORAGE_KEYS.LOCAL_EVENTS, null);
-      let tasks = loadJSON(STORAGE_KEYS.LOCAL_TASKS, null);
-
-      // Seed helpful starter family events/tasks on first launch so screen looks alive immediately
-      if (!events) {
-        const todayStr = toISODate(new Date());
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = toISODate(tomorrow);
-        const dayAfter = new Date();
-        dayAfter.setDate(dayAfter.getDate() + 2);
-        const dayAfterStr = toISODate(dayAfter);
-
-        events = [
-          {
-            id: 'local-1',
-            title: 'Morning Coffee & Weekly Meal Plan',
-            owner: 'family',
-            date: todayStr,
-            allDay: false,
-            startTime: '08:30',
-            endTime: '09:15',
-            location: 'Kitchen'
-          },
-          {
-            id: 'local-2',
-            title: 'Dentist Checkup',
-            owner: 'wife',
-            date: todayStr,
-            allDay: false,
-            startTime: '14:00',
-            endTime: '15:00',
-            location: 'Main Street Dental'
-          },
-          {
-            id: 'local-3',
-            title: 'Pick Up Groceries & School Snacks',
-            owner: 'mine',
-            date: todayStr,
-            allDay: false,
-            startTime: '17:30',
-            endTime: '18:15',
-            location: 'Trader Joe’s'
-          },
-          {
-            id: 'local-4',
-            title: 'Family Dinner & Board Game Night',
-            owner: 'family',
-            date: tomorrowStr,
-            allDay: false,
-            startTime: '18:30',
-            endTime: '20:30',
-            location: 'Home'
-          },
-          {
-            id: 'local-5',
-            title: 'School Spirit Day',
-            owner: 'family',
-            date: dayAfterStr,
-            allDay: true,
-            startTime: '',
-            endTime: '',
-            location: ''
-          }
-        ];
-        saveJSON(STORAGE_KEYS.LOCAL_EVENTS, events);
-      }
-
-      if (!tasks) {
-        tasks = [
-          { id: 'task-1', title: 'Milk, eggs, berries & sourdough bread', completed: false },
-          { id: 'task-2', title: 'Sign school permission slip on counter', completed: false },
-          { id: 'task-3', title: 'Schedule car oil change for next week', completed: false },
-          { id: 'task-4', title: 'Water patio plants', completed: true }
-        ];
-        saveJSON(STORAGE_KEYS.LOCAL_TASKS, tasks);
-      }
-
-      /* =====================================================================
-         3. UTILITY HELPERS
-         ===================================================================== */
-      function loadJSON(key, fallback) {
-        try {
-          const raw = localStorage.getItem(key);
-          return raw ? JSON.parse(raw) : fallback;
-        } catch (e) {
-          return fallback;
-        }
-      }
-
-      function saveJSON(key, value) {
-        try {
-          localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-          console.warn('Storage quota exceeded or blocked:', e);
-        }
-      }
-
-      function toISODate(dateObj) {
-        const y = dateObj.getFullYear();
-        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const d = String(dateObj.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      }
-
-      function formatTimeDisplay(time24) {
-        if (!time24) return '';
-        const [hStr, mStr] = time24.split(':');
-        let h = parseInt(hStr, 10);
         if (settings.clockFormat === '24') {
-          return `${String(h).padStart(2, '0')}:${mStr}`;
-        }
-        const suffix = h >= 12 ? 'PM' : 'AM';
-        h = h % 12 || 12;
-        return `${h}:${mStr} ${suffix}`;
-      }
-
-      function showToast(msg) {
-        const banner = document.getElementById('toastBanner');
-        const textEl = document.getElementById('toastMessage');
-        textEl.textContent = msg;
-        banner.classList.remove('hidden');
-        clearTimeout(banner._hideTimer);
-        banner._hideTimer = setTimeout(() => {
-          banner.classList.add('hidden');
-        }, 3200);
-      }
-
-      function escapeHTML(str) {
-        const div = document.createElement('div');
-        div.textContent = str || '';
-        return div.innerHTML;
-      }
-
-      /* =====================================================================
-         4. DIGITAL CLOCK & DATE ENGINE (Updates Every Second)
-         ===================================================================== */
-      function updateClock() {
-        const now = new Date();
-        let hours = now.getHours();
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-
-        const ampmEl = document.getElementById('clockAmPm');
-        if (settings.clockFormat === '12') {
+          if (timeEl) timeEl.textContent = `${String(hours).padStart(2, '0')}:${mins}`;
+          if (ampmEl) ampmEl.textContent = '';
+        } else {
           const ampm = hours >= 12 ? 'PM' : 'AM';
           hours = hours % 12 || 12;
-          ampmEl.textContent = ampm;
-          ampmEl.classList.remove('hidden');
-        } else {
-          ampmEl.classList.add('hidden');
+          if (timeEl) timeEl.textContent = `${hours}:${mins}`;
+          if (ampmEl) ampmEl.textContent = ampm;
         }
 
-        document.getElementById('clockTime').textContent = `${String(hours).padStart(2, '0')}:${minutes}`;
-        document.getElementById('clockSeconds').textContent = seconds;
-
-        const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
-        const fullDate = now.toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric'
-        });
-        document.getElementById('currentDayName').textContent = dayName;
-        document.getElementById('currentFullDate').textContent = fullDate;
+        if (dayEl) {
+          dayEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
+        }
+        if (dateEl) {
+          dateEl.textContent = now.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        }
       }
 
       /* =====================================================================
-         5. WALL-CALENDAR SCENIC BACKGROUND ROTATOR
+         5. WALL-CALENDAR BACKGROUND CROSSFADE
          ===================================================================== */
-      function applyWallpaper(index) {
-        const item = WALLPAPERS[index % WALLPAPERS.length];
+      function setBackgroundImage(url) {
         const layerA = document.getElementById('bgLayerA');
         const layerB = document.getElementById('bgLayerB');
-        const captionEl = document.getElementById('wallpaperCaption');
+        if (!layerA || !layerB) return;
 
-        // Preload image cleanly before crossfading
-        const img = new Image();
-        img.onload = () => {
-          if (activeBgLayer === 'A') {
-            layerB.style.backgroundImage = `url('${item.url}')`;
-            layerB.classList.replace('opacity-0', 'opacity-100');
-            layerA.classList.replace('opacity-100', 'opacity-0');
-            activeBgLayer = 'B';
-          } else {
-            layerA.style.backgroundImage = `url('${item.url}')`;
-            layerA.classList.replace('opacity-0', 'opacity-100');
-            layerB.classList.replace('opacity-100', 'opacity-0');
-            activeBgLayer = 'A';
-          }
-          captionEl.textContent = item.caption;
-        };
-        img.onerror = () => {
-          // Fallback gradient if offline
-          layerA.style.background = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
-          captionEl.textContent = 'Offline Scenic Theme';
-        };
-        img.src = item.url;
-      }
-
-      function nextWallpaper() {
-        wallpaperIndex = (wallpaperIndex + 1) % WALLPAPERS.length;
-        applyWallpaper(wallpaperIndex);
-      }
-
-      function resetWallpaperTimer() {
-        clearInterval(wallpaperTimer);
-        const interval = parseInt(settings.wallpaperInterval, 10);
-        if (interval > 0) {
-          wallpaperTimer = setInterval(nextWallpaper, interval);
-        }
-      }
-
-      /* =====================================================================
-         6. RENDER CALENDAR (AGENDA & MONTH GRID)
-         ===================================================================== */
-      function getOwnerStyle(owner) {
-        if (owner === 'wife') {
-          return {
-            label: settings.wifeName,
-            badgeBg: 'bg-rose-500/30 border-rose-400/50 text-rose-100',
-            dot: 'bg-rose-400',
-            borderLeft: 'border-l-4 border-l-rose-400'
-          };
-        }
-        if (owner === 'family') {
-          return {
-            label: 'Family',
-            badgeBg: 'bg-emerald-500/30 border-emerald-400/50 text-emerald-100',
-            dot: 'bg-emerald-400',
-            borderLeft: 'border-l-4 border-l-emerald-400'
-          };
-        }
-        return {
-          label: settings.mineName,
-          badgeBg: 'bg-sky-500/30 border-sky-400/50 text-sky-100',
-          dot: 'bg-sky-400',
-          borderLeft: 'border-l-4 border-l-sky-400'
-        };
-      }
-
-      function renderCalendar() {
-        // Update legend names
-        document.getElementById('legendMineName').textContent = settings.mineName;
-        document.getElementById('legendWifeName').textContent = settings.wifeName;
-        document.getElementById('radioMineLabel').textContent = settings.mineName;
-        document.getElementById('radioWifeLabel').textContent = settings.wifeName;
-
-        if (currentView === 'agenda') {
-          document.getElementById('agendaViewContainer').classList.remove('hidden');
-          document.getElementById('monthViewContainer').classList.add('hidden');
-          document.getElementById('monthViewContainer').classList.remove('flex');
-          renderAgendaView();
+        if (activeBgLayer === 'A') {
+          layerB.style.backgroundImage = `url("${url}")`;
+          layerB.classList.replace('opacity-0', 'opacity-100');
+          layerA.classList.replace('opacity-100', 'opacity-0');
+          activeBgLayer = 'B';
         } else {
-          document.getElementById('agendaViewContainer').classList.add('hidden');
-          document.getElementById('monthViewContainer').classList.remove('hidden');
-          document.getElementById('monthViewContainer').classList.add('flex');
-          renderMonthGridView();
+          layerA.style.backgroundImage = `url("${url}")`;
+          layerA.classList.replace('opacity-0', 'opacity-100');
+          layerB.classList.replace('opacity-100', 'opacity-0');
+          activeBgLayer = 'A';
         }
       }
 
-      function renderAgendaView() {
-        const container = document.getElementById('agendaViewContainer');
-        container.innerHTML = '';
-
-        // Show 7 days starting from referenceDate
-        const startDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
-        const todayISO = toISODate(new Date());
-
-        for (let i = 0; i < 7; i++) {
-          const dayDate = new Date(startDay);
-          dayDate.setDate(startDay.getDate() + i);
-          const iso = toISODate(dayDate);
-          const isToday = iso === todayISO;
-
-          const dayEvents = events
-            .filter(ev => ev.date === iso)
-            .sort((a, b) => {
-              if (a.allDay && !b.allDay) return -1;
-              if (!a.allDay && b.allDay) return 1;
-              return (a.startTime || '').localeCompare(b.startTime || '');
-            });
-
-          const section = document.createElement('div');
-          section.className = 'space-y-2.5';
-
-          const headingLabel = isToday
-            ? `Today &bull; ${dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
-            : dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-
-          section.innerHTML = `
-            <div class="flex items-center justify-between">
-              <h3 class="text-xl sm:text-2xl font-extrabold ${isToday ? 'text-amber-300' : 'text-slate-100'}">
-                ${headingLabel}
-              </h3>
-              <button type="button" data-quick-date="${iso}"
-                class="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-sm sm:text-base font-bold text-slate-200 transition cursor-pointer">
-                + Add
-              </button>
-            </div>
-          `;
-
-          if (dayEvents.length === 0) {
-            const emptyBox = document.createElement('div');
-            emptyBox.className = 'px-4 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-slate-300 text-base sm:text-lg italic';
-            emptyBox.textContent = 'No scheduled events';
-            section.appendChild(emptyBox);
-          } else {
-            const list = document.createElement('div');
-            list.className = 'space-y-2.5';
-
-            dayEvents.forEach(ev => {
-              const style = getOwnerStyle(ev.owner);
-              const timeStr = ev.allDay
-                ? 'All Day'
-                : `${formatTimeDisplay(ev.startTime)}${ev.endTime ? ' – ' + formatTimeDisplay(ev.endTime) : ''}`;
-
-              const card = document.createElement('div');
-              card.className = `glass-subcard ${style.borderLeft} rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 cursor-pointer`;
-              card.addEventListener('click', () => openEditEventModal(ev));
-
-              card.innerHTML = `
-                <div class="space-y-1">
-                  <div class="flex flex-wrap items-center gap-2.5">
-                    <span class="text-xl sm:text-2xl font-bold text-white leading-snug">${escapeHTML(ev.title)}</span>
-                    <span class="px-3 py-0.5 rounded-full border text-xs sm:text-sm font-bold ${style.badgeBg}">
-                      ${escapeHTML(style.label)}
-                    </span>
-                  </div>
-                  ${ev.location ? `<div class="text-sm sm:text-base text-slate-300 flex items-center gap-1.5">
-                    <span>📍</span><span>${escapeHTML(ev.location)}</span>
-                  </div>` : ''}
-                </div>
-                <div class="clock-font text-lg sm:text-xl font-bold text-amber-200 shrink-0">
-                  ${escapeHTML(timeStr)}
-                </div>
-              `;
-              list.appendChild(card);
-            });
-
-            section.appendChild(list);
-          }
-
-          container.appendChild(section);
-        }
-
-        // Bind "+ Add" date shortcuts
-        container.querySelectorAll('[data-quick-date]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            openNewEventModal(btn.getAttribute('data-quick-date'));
-          });
-        });
-      }
-
-      function renderMonthGridView() {
-        const year = referenceDate.getFullYear();
-        const month = referenceDate.getMonth();
-        document.getElementById('monthGridTitle').textContent = referenceDate.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric'
-        });
-
-        const grid = document.getElementById('monthDaysGrid');
-        grid.innerHTML = '';
-
-        const firstDayOfWeek = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const todayISO = toISODate(new Date());
-
-        // Leading empty cells
-        for (let i = 0; i < firstDayOfWeek; i++) {
-          const blank = document.createElement('div');
-          blank.className = 'rounded-2xl bg-white/5 border border-white/5 opacity-40';
-          grid.appendChild(blank);
-        }
-
-        for (let day = 1; day <= daysInMonth; day++) {
-          const cellDate = new Date(year, month, day);
-          const iso = toISODate(cellDate);
-          const isToday = iso === todayISO;
-          const dayEvents = events.filter(ev => ev.date === iso);
-
-          const cell = document.createElement('div');
-          cell.className = `rounded-2xl p-2 sm:p-2.5 flex flex-col justify-between border transition cursor-pointer overflow-hidden ${
-            isToday
-              ? 'bg-amber-400/20 border-amber-300 shadow-lg'
-              : 'bg-white/10 hover:bg-white/15 border-white/15'
-          }`;
-          cell.addEventListener('click', () => openNewEventModal(iso));
-
-          const header = document.createElement('div');
-          header.className = 'flex items-center justify-between';
-          header.innerHTML = `
-            <span class="text-base sm:text-xl font-extrabold ${isToday ? 'text-amber-300' : 'text-white'}">${day}</span>
-            ${dayEvents.length > 0 ? `<span class="text-xs font-bold text-slate-300">${dayEvents.length}</span>` : ''}
-          `;
-          cell.appendChild(header);
-
-          const pills = document.createElement('div');
-          pills.className = 'space-y-1 mt-1 overflow-hidden';
-          dayEvents.slice(0, 3).forEach(ev => {
-            const style = getOwnerStyle(ev.owner);
-            const pill = document.createElement('div');
-            pill.className = `px-2 py-0.5 rounded-lg text-xs sm:text-sm font-semibold truncate border ${style.badgeBg}`;
-            pill.textContent = ev.title;
-            pill.addEventListener('click', (e) => {
-              e.stopPropagation();
-              openEditEventModal(ev);
-            });
-            pills.appendChild(pill);
-          });
-
-          if (dayEvents.length > 3) {
-            const more = document.createElement('div');
-            more.className = 'text-xs font-bold text-amber-200 pl-1';
-            more.textContent = `+${dayEvents.length - 3} more`;
-            pills.appendChild(more);
-          }
-
-          cell.appendChild(pills);
-          grid.appendChild(cell);
-        }
-      }
-
-      /* =====================================================================
-         7. FAMILY TASKS BOARD (Local + Google Tasks Sync)
-         ===================================================================== */
-      function renderTasks() {
-        const container = document.getElementById('tasksListContainer');
-        container.innerHTML = '';
-
-        const activeCount = tasks.filter(t => !t.completed).length;
-        document.getElementById('taskCountBadge').textContent = activeCount;
-
-        // Sort incomplete tasks first
-        const sortedTasks = [...tasks].sort((a, b) => Number(a.completed) - Number(b.completed));
-
-        if (sortedTasks.length === 0) {
-          container.innerHTML = `
-            <div class="p-5 rounded-2xl bg-white/5 border border-white/10 text-center text-slate-300 text-lg">
-              All caught up! Add a grocery item or family task above.
-            </div>
-          `;
+      function applyWallpaperPreference() {
+        clearInterval(wallpaperTimer);
+        if (settings.wallpaperMode !== 'rotate') {
+          const idx = parseInt(settings.wallpaperMode, 10) || 0;
+          setBackgroundImage(WALLPAPERS[idx % WALLPAPERS.length]);
           return;
         }
 
-        sortedTasks.forEach(task => {
-          const row = document.createElement('div');
-          row.className = `glass-subcard rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer ${
-            task.completed ? 'opacity-55' : ''
-          }`;
-
-          const leftSide = document.createElement('div');
-          leftSide.className = 'flex items-center gap-3.5 flex-1 min-w-0';
-          leftSide.addEventListener('click', () => toggleTaskCompletion(task));
-
-          leftSide.innerHTML = `
-            <div class="w-7 h-7 rounded-xl border-2 flex items-center justify-center shrink-0 transition ${
-              task.completed
-                ? 'bg-emerald-400 border-emerald-400 text-slate-950'
-                : 'border-white/40 bg-slate-950/40'
-            }">
-              ${task.completed ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>' : ''}
-            </div>
-            <span class="text-lg sm:text-xl font-semibold break-words ${
-              task.completed ? 'line-through text-slate-400' : 'text-white'
-            }">${escapeHTML(task.title)}</span>
-          `;
-
-          const delBtn = document.createElement('button');
-          delBtn.type = 'button';
-          delBtn.title = 'Remove task';
-          delBtn.className = 'p-2 rounded-xl text-slate-400 hover:text-rose-300 hover:bg-white/10 transition shrink-0 cursor-pointer';
-          delBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>';
-          delBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteTaskItem(task);
-          });
-
-          row.appendChild(leftSide);
-          row.appendChild(delBtn);
-          container.appendChild(row);
-        });
-      }
-
-      async function addTaskItem(title) {
-        const cleanTitle = title.trim();
-        if (!cleanTitle) return;
-
-        if (googleAccessToken) {
-          try {
-            const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(googleDefaultTaskListId)}/tasks`, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${googleAccessToken}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ title: cleanTitle })
-            });
-            if (res.ok) {
-              const created = await res.json();
-              tasks.unshift({ id: created.id, title: created.title, completed: false, isGoogle: true });
-              renderTasks();
-              showToast('Task added to Google Tasks');
-              return;
-            }
-          } catch (err) {
-            console.error('Google Tasks create error:', err);
-          }
-        }
-
-        tasks.unshift({
-          id: 'task-' + Date.now(),
-          title: cleanTitle,
-          completed: false
-        });
-        saveJSON(STORAGE_KEYS.LOCAL_TASKS, tasks);
-        renderTasks();
-        showToast('Task added');
-      }
-
-      async function toggleTaskCompletion(task) {
-        task.completed = !task.completed;
-        renderTasks();
-
-        if (googleAccessToken && task.isGoogle) {
-          try {
-            await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(googleDefaultTaskListId)}/tasks/${encodeURIComponent(task.id)}`, {
-              method: 'PATCH',
-              headers: {
-                Authorization: `Bearer ${googleAccessToken}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                status: task.completed ? 'completed' : 'needsAction'
-              })
-            });
-            showToast(task.completed ? 'Completed in Google Tasks' : 'Reopened task');
-            return;
-          } catch (err) {
-            console.error('Google Tasks update error:', err);
-          }
-        }
-
-        saveJSON(STORAGE_KEYS.LOCAL_TASKS, tasks);
-      }
-
-      async function deleteTaskItem(task) {
-        tasks = tasks.filter(t => t.id !== task.id);
-        renderTasks();
-
-        if (googleAccessToken && task.isGoogle) {
-          try {
-            await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(googleDefaultTaskListId)}/tasks/${encodeURIComponent(task.id)}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${googleAccessToken}` }
-            });
-            return;
-          } catch (err) {
-            console.error('Google Tasks delete error:', err);
-          }
-        }
-
-        saveJSON(STORAGE_KEYS.LOCAL_TASKS, tasks);
+        setBackgroundImage(WALLPAPERS[wallpaperIdx % WALLPAPERS.length]);
+        wallpaperTimer = setInterval(() => {
+          wallpaperIdx = (wallpaperIdx + 1) % WALLPAPERS.length;
+          setBackgroundImage(WALLPAPERS[wallpaperIdx]);
+        }, 60000);
       }
 
       /* =====================================================================
-         8. ADD / EDIT / DELETE EVENTS (Local + Two-Way Google Calendar Sync)
+         6A. FULL-SCREEN MONTHLY CALENDAR RENDERER
          ===================================================================== */
-      function openNewEventModal(prefillDate) {
-        document.getElementById('eventModalTitle').textContent = 'New Family Event';
-        document.getElementById('eventIdInput').value = '';
-        document.getElementById('eventTitleInput').value = '';
-        document.getElementById('eventDateInput').value = prefillDate || toISODate(new Date());
-        document.getElementById('eventAllDayInput').checked = false;
-        document.getElementById('timeInputsRow').classList.remove('hidden');
-        document.getElementById('eventStartTimeInput').value = '09:00';
-        document.getElementById('eventEndTimeInput').value = '10:00';
-        document.getElementById('eventLocationInput').value = '';
-        document.getElementById('deleteEventBtn').classList.add('hidden');
+      function renderMonthCalendar() {
+        const year = viewedMonthDate.getFullYear();
+        const month = viewedMonthDate.getMonth();
+        const grid = document.getElementById('monthGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
 
-        const ownerRadio = document.querySelector('input[name="eventOwner"][value="family"]');
-        if (ownerRadio) ownerRadio.checked = true;
+        // Convert JS Sunday=0..Saturday=6 into Monday=0..Sunday=6
+        const rawFirstWeekday = new Date(year, month, 1).getDay();
+        const firstDayWeekday = (rawFirstWeekday + 6) % 7;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const totalCells = firstDayWeekday + daysInMonth;
+        const rowCount = Math.ceil(totalCells / 7);
 
-        const modal = document.getElementById('eventModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        grid.style.gridTemplateRows = `repeat(${rowCount}, minmax(0, 1fr))`;
+
+        const todayISO = toISODate(new Date());
+
+        // Leading blank cells
+        for (let i = 0; i < firstDayWeekday; i++) {
+          const emptyCell = document.createElement('div');
+          emptyCell.className = 'rounded-2xl bg-white/[0.03] border border-white/[0.06]';
+          grid.appendChild(emptyCell);
+        }
+
+        // Day cells
+        for (let day = 1; day <= daysInMonth; day++) {
+          const isoDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const isToday = isoDate === todayISO;
+
+          const cell = document.createElement('div');
+          cell.className = `rounded-2xl p-1.5 sm:p-2 flex flex-col min-h-0 overflow-hidden border transition cursor-pointer ${
+            isToday
+              ? 'bg-amber-400/20 border-amber-300 shadow-lg'
+              : 'bg-slate-950/45 hover:bg-slate-900/65 border-white/12'
+          }`;
+          cell.addEventListener('click', () => openDayModal(isoDate));
+
+          // Day number header
+          const dayHeader = document.createElement('div');
+          dayHeader.className = 'shrink-0 flex items-center justify-between mb-1';
+
+          const numBadge = document.createElement('span');
+          numBadge.className = isToday
+            ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-400 text-slate-950 font-black text-sm sm:text-lg flex items-center justify-center'
+            : 'text-sm sm:text-lg lg:text-xl font-extrabold text-slate-100 px-1';
+          numBadge.textContent = String(day);
+          dayHeader.appendChild(numBadge);
+          cell.appendChild(dayHeader);
+
+          // Events inside this day cell
+          const dayEvents = events
+            .filter(ev => ev.date === isoDate)
+            .sort((a, b) => {
+              if (a.allDay && !b.allDay) return -1;
+              if (!a.allDay && b.allDay) return 1;
+              return (a.startTime || '').localeCompare(b.startTime || '');
+            });
+
+          const listWrap = document.createElement('div');
+          listWrap.className = 'flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1';
+
+          dayEvents.forEach(ev => {
+            const theme = getOwnerTheme(ev.owner);
+            const pill = document.createElement('div');
+            pill.className = `px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg border text-[11px] sm:text-xs lg:text-sm font-bold truncate ${theme.pillClass}`;
+            const prefix = ev.allDay ? '' : `${formatTime12or24(ev.startTime)} `;
+            pill.textContent = `${prefix}${ev.title}`;
+            pill.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openDayModal(isoDate, ev);
+            });
+            listWrap.appendChild(pill);
+          });
+
+          cell.appendChild(listWrap);
+          grid.appendChild(cell);
+        }
+
+        // Trailing blank cells to keep grid visually balanced
+        const trailingCells = rowCount * 7 - totalCells;
+        for (let i = 0; i < trailingCells; i++) {
+          const emptyCell = document.createElement('div');
+          emptyCell.className = 'rounded-2xl bg-white/[0.03] border border-white/[0.06]';
+          grid.appendChild(emptyCell);
+        }
       }
 
-      function openEditEventModal(ev) {
-        document.getElementById('eventModalTitle').textContent = 'Edit Event';
-        document.getElementById('eventIdInput').value = ev.id;
+      /* =====================================================================
+         6B. LARGE-FONT CHRONOLOGICAL SCHEDULE / AGENDA RENDERER
+         ===================================================================== */
+      function setCalendarView(viewMode) {
+        currentView = viewMode === 'schedule' ? 'schedule' : 'month';
+
+        const monthContainer = document.getElementById('monthViewContainer');
+        const scheduleContainer = document.getElementById('scheduleViewContainer');
+        const monthBtn = document.getElementById('viewMonthBtn');
+        const scheduleBtn = document.getElementById('viewScheduleBtn');
+
+        const activeClasses = ['bg-amber-400', 'text-slate-950', 'shadow'];
+        const inactiveClasses = ['text-slate-200', 'hover:text-white'];
+
+        if (currentView === 'schedule') {
+          if (monthContainer) monthContainer.classList.add('hidden');
+          if (scheduleContainer) scheduleContainer.classList.remove('hidden');
+          if (scheduleBtn) {
+            scheduleBtn.classList.add(...activeClasses);
+            scheduleBtn.classList.remove(...inactiveClasses);
+          }
+          if (monthBtn) {
+            monthBtn.classList.remove(...activeClasses);
+            monthBtn.classList.add(...inactiveClasses);
+          }
+          renderScheduleView();
+        } else {
+          if (scheduleContainer) scheduleContainer.classList.add('hidden');
+          if (monthContainer) monthContainer.classList.remove('hidden');
+          if (monthBtn) {
+            monthBtn.classList.add(...activeClasses);
+            monthBtn.classList.remove(...inactiveClasses);
+          }
+          if (scheduleBtn) {
+            scheduleBtn.classList.remove(...activeClasses);
+            scheduleBtn.classList.add(...inactiveClasses);
+          }
+          renderMonthCalendar();
+        }
+      }
+
+      function renderActiveView() {
+        if (currentView === 'schedule') {
+          renderScheduleView();
+        } else {
+          renderMonthCalendar();
+        }
+      }
+
+      function renderScheduleView() {
+        const year = viewedMonthDate.getFullYear();
+        const month = viewedMonthDate.getMonth();
+        const listEl = document.getElementById('scheduleList');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        const todayISO = toISODate(new Date());
+        const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+        const isCurrentMonth =
+          year === new Date().getFullYear() && month === new Date().getMonth();
+
+        // Filter events for the viewed month (from today onward if viewing current month)
+        const filtered = events
+          .filter(ev => {
+            if (!ev.date || !ev.date.startsWith(monthPrefix)) return false;
+            if (isCurrentMonth && ev.date < todayISO) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            if (a.allDay && !b.allDay) return -1;
+            if (!a.allDay && b.allDay) return 1;
+            return (a.startTime || '').localeCompare(b.startTime || '');
+          });
+
+        if (filtered.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'flex flex-col items-center justify-center py-14 px-4 text-center rounded-2xl bg-slate-950/45 border border-white/10';
+          empty.innerHTML = `
+            <p class="text-xl sm:text-2xl font-extrabold text-slate-200 mb-2">No upcoming events in ${viewedMonthDate.toLocaleDateString('en-US', { month: 'long' })}</p>
+            <p class="text-sm sm:text-base text-slate-400">Tap "+ Add Event" above or switch back to Month view to schedule.</p>
+          `;
+          listEl.appendChild(empty);
+          return;
+        }
+
+        // Group events chronologically by date
+        const grouped = new Map();
+        filtered.forEach(ev => {
+          if (!grouped.has(ev.date)) grouped.set(ev.date, []);
+          grouped.get(ev.date).push(ev);
+        });
+
+        grouped.forEach((dayEvents, isoDate) => {
+          const [y, m, d] = isoDate.split('-').map(Number);
+          const dateObj = new Date(y, m - 1, d);
+          const isToday = isoDate === todayISO;
+
+          const dayCard = document.createElement('section');
+          dayCard.className = `rounded-2xl p-3.5 sm:p-5 border transition ${
+            isToday
+              ? 'bg-amber-400/20 border-amber-300 shadow-lg'
+              : 'bg-slate-950/55 border-white/15'
+          }`;
+
+          // Day Header Row
+          const dayHeader = document.createElement('div');
+          dayHeader.className = 'flex items-center justify-between gap-3 pb-2.5 mb-3 border-b border-white/15';
+
+          const dateHeading = document.createElement('div');
+          dateHeading.className = 'flex items-center gap-2.5 flex-wrap';
+          dateHeading.innerHTML = `
+            <span class="text-xl sm:text-2xl lg:text-3xl font-black ${isToday ? 'text-amber-300' : 'text-white'}">
+              ${dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </span>
+            ${isToday ? '<span class="px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-black uppercase bg-amber-400 text-slate-950">Today</span>' : ''}
+          `;
+
+          const addDayBtn = document.createElement('button');
+          addDayBtn.type = 'button';
+          addDayBtn.className = 'px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs sm:text-sm font-extrabold text-amber-200 cursor-pointer shrink-0';
+          addDayBtn.textContent = '+ Add';
+          addDayBtn.addEventListener('click', () => openDayModal(isoDate));
+
+          dayHeader.appendChild(dateHeading);
+          dayHeader.appendChild(addDayBtn);
+          dayCard.appendChild(dayHeader);
+
+          // Day Event Rows
+          const eventsStack = document.createElement('div');
+          eventsStack.className = 'space-y-2.5';
+
+          dayEvents.forEach(ev => {
+            const theme = getOwnerTheme(ev.owner);
+            const timeText = ev.allDay
+              ? 'All Day'
+              : `${formatTime12or24(ev.startTime)}${ev.endTime ? ' – ' + formatTime12or24(ev.endTime) : ''}`;
+
+            const itemRow = document.createElement('div');
+            itemRow.className = `flex items-center justify-between gap-3 sm:gap-4 px-4 py-3 sm:py-3.5 rounded-2xl border cursor-pointer hover:brightness-110 active:scale-[0.99] transition ${theme.pillClass}`;
+            itemRow.addEventListener('click', () => openDayModal(isoDate, ev));
+
+            const leftInfo = document.createElement('div');
+            leftInfo.className = 'flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0';
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'clock-font text-sm sm:text-lg lg:text-xl font-extrabold opacity-95 shrink-0';
+            timeSpan.textContent = timeText;
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'text-lg sm:text-xl lg:text-2xl font-black truncate';
+            titleSpan.textContent = ev.title;
+
+            leftInfo.appendChild(timeSpan);
+            leftInfo.appendChild(titleSpan);
+
+            const ownerBadge = document.createElement('span');
+            ownerBadge.className = 'shrink-0 px-3 py-1 rounded-full bg-slate-950/45 border border-white/20 text-xs sm:text-sm font-extrabold';
+            ownerBadge.textContent = theme.label;
+
+            itemRow.appendChild(leftInfo);
+            itemRow.appendChild(ownerBadge);
+            eventsStack.appendChild(itemRow);
+          });
+
+          dayCard.appendChild(eventsStack);
+          listEl.appendChild(dayCard);
+        });
+      }
+
+      /* =====================================================================
+         7. DAY AGENDA MODAL & TWO-WAY EVENT CRUD
+         ===================================================================== */
+      function openDayModal(isoDate, eventToEdit = null) {
+        selectedDayISO = isoDate;
+        const [y, m, d] = isoDate.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d);
+
+        const titleEl = document.getElementById('dayModalTitle');
+        if (titleEl) {
+          titleEl.textContent = dateObj.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        }
+
+        const mineLbl = document.getElementById('formMineLabel');
+        const wifeLbl = document.getElementById('formWifeLabel');
+        if (mineLbl) mineLbl.textContent = settings.mineName || 'Me';
+        if (wifeLbl) wifeLbl.textContent = settings.wifeName || 'Wife';
+
+        renderDayEventsList(isoDate);
+
+        if (eventToEdit) {
+          populateEventFormForEdit(eventToEdit);
+        } else {
+          resetEventForm(isoDate);
+        }
+
+        const modal = document.getElementById('dayModal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
+      }
+
+      function closeDayModal() {
+        const modal = document.getElementById('dayModal');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        }
+      }
+
+      function renderDayEventsList(isoDate) {
+        const listEl = document.getElementById('dayModalEventsList');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        const dayEvents = events
+          .filter(ev => ev.date === isoDate)
+          .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+        if (dayEvents.length === 0) {
+          listEl.innerHTML = `<div class="text-sm text-slate-400 italic">No events scheduled for this day yet.</div>`;
+          return;
+        }
+
+        dayEvents.forEach(ev => {
+          const theme = getOwnerTheme(ev.owner);
+          const timeText = ev.allDay
+            ? 'All Day'
+            : `${formatTime12or24(ev.startTime)}${ev.endTime ? ' - ' + formatTime12or24(ev.endTime) : ''}`;
+
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 cursor-pointer transition';
+          row.addEventListener('click', () => populateEventFormForEdit(ev));
+
+          const left = document.createElement('div');
+          left.className = 'min-w-0';
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'font-extrabold text-base sm:text-lg text-white truncate';
+          titleDiv.textContent = ev.title;
+
+          const metaDiv = document.createElement('div');
+          metaDiv.className = 'text-xs sm:text-sm font-semibold text-slate-300';
+          metaDiv.textContent = `${theme.label} • ${timeText}`;
+
+          left.appendChild(titleDiv);
+          left.appendChild(metaDiv);
+
+          const badge = document.createElement('span');
+          badge.className = `shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold border ${theme.pillClass}`;
+          badge.textContent = 'Edit';
+
+          row.appendChild(left);
+          row.appendChild(badge);
+          listEl.appendChild(row);
+        });
+      }
+
+      function resetEventForm(isoDate) {
+        document.getElementById('eventFormHeading').textContent = '+ Schedule Event';
+        document.getElementById('resetFormBtn').classList.add('hidden');
+        document.getElementById('deleteEventBtn').classList.add('hidden');
+        document.getElementById('editEventId').value = '';
+        document.getElementById('eventTitleInput').value = '';
+        document.getElementById('eventDateInput').value = isoDate || selectedDayISO;
+        document.getElementById('eventAllDayInput').checked = false;
+        document.getElementById('eventTimeRow').classList.remove('hidden');
+        document.getElementById('eventStartInput').value = '09:00';
+        document.getElementById('eventEndInput').value = '10:00';
+        const familyRadio = document.querySelector('input[name="eventOwner"][value="family"]');
+        if (familyRadio) familyRadio.checked = true;
+      }
+
+      function populateEventFormForEdit(ev) {
+        document.getElementById('eventFormHeading').textContent = 'Edit Event';
+        document.getElementById('resetFormBtn').classList.remove('hidden');
+        document.getElementById('deleteEventBtn').classList.remove('hidden');
+        document.getElementById('editEventId').value = ev.id;
         document.getElementById('eventTitleInput').value = ev.title;
         document.getElementById('eventDateInput').value = ev.date;
         document.getElementById('eventAllDayInput').checked = Boolean(ev.allDay);
-        document.getElementById('timeInputsRow').classList.toggle('hidden', Boolean(ev.allDay));
-        document.getElementById('eventStartTimeInput').value = ev.startTime || '09:00';
-        document.getElementById('eventEndTimeInput').value = ev.endTime || '10:00';
-        document.getElementById('eventLocationInput').value = ev.location || '';
-        document.getElementById('deleteEventBtn').classList.remove('hidden');
+        document.getElementById('eventTimeRow').classList.toggle('hidden', Boolean(ev.allDay));
+        document.getElementById('eventStartInput').value = ev.startTime || '09:00';
+        document.getElementById('eventEndInput').value = ev.endTime || '10:00';
 
-        const ownerRadio = document.querySelector(`input[name="eventOwner"][value="${ev.owner || 'mine'}"]`);
-        if (ownerRadio) ownerRadio.checked = true;
-
-        const modal = document.getElementById('eventModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        const radio = document.querySelector(`input[name="eventOwner"][value="${ev.owner || 'mine'}"]`);
+        if (radio) radio.checked = true;
       }
 
-      function closeEventModal() {
-        const modal = document.getElementById('eventModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-
-      function resolveGoogleCalendarIdForOwner(owner) {
+      function resolveTargetGoogleCalendar(owner) {
         if (owner === 'wife' && settings.mapWifeCalendarId) return settings.mapWifeCalendarId;
         if (owner === 'family' && settings.mapFamilyCalendarId) return settings.mapFamilyCalendarId;
         return settings.mapMineCalendarId || 'primary';
       }
 
-      async function saveEventFromForm(e) {
+      async function handleSaveEvent(e) {
         e.preventDefault();
-        const existingId = document.getElementById('eventIdInput').value;
+        const existingId = document.getElementById('editEventId').value;
         const title = document.getElementById('eventTitleInput').value.trim();
-        const owner = document.querySelector('input[name="eventOwner"]:checked').value;
+        const ownerRadio = document.querySelector('input[name="eventOwner"]:checked');
+        const owner = ownerRadio ? ownerRadio.value : 'mine';
         const date = document.getElementById('eventDateInput').value;
         const allDay = document.getElementById('eventAllDayInput').checked;
-        const startTime = document.getElementById('eventStartTimeInput').value;
-        const endTime = document.getElementById('eventEndTimeInput').value;
-        const location = document.getElementById('eventLocationInput').value.trim();
+        const startTime = document.getElementById('eventStartInput').value;
+        const endTime = document.getElementById('eventEndInput').value;
 
         if (!title || !date) return;
 
-        // If connected to Google Calendar, push live update via REST API
+        // Live two-way Google Calendar sync
         if (googleAccessToken) {
           try {
-            const targetCalId = resolveGoogleCalendarIdForOwner(owner);
+            const targetCalId = resolveTargetGoogleCalendar(owner);
             const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            const gBody = {
-              summary: title,
-              location: location || undefined
-            };
+            const bodyPayload = { summary: title };
 
             if (allDay) {
-              const nextDay = new Date(date + 'T00:00:00');
-              nextDay.setDate(nextDay.getDate() + 1);
-              gBody.start = { date };
-              gBody.end = { date: toISODate(nextDay) };
+              const [yy, mm, dd] = date.split('-').map(Number);
+              const nextDay = new Date(yy, mm - 1, dd + 1);
+              bodyPayload.start = { date };
+              bodyPayload.end = { date: toISODate(nextDay) };
             } else {
-              gBody.start = { dateTime: `${date}T${startTime}:00`, timeZone: tz };
-              gBody.end = { dateTime: `${date}T${endTime || startTime}:00`, timeZone: tz };
+              bodyPayload.start = { dateTime: `${date}T${startTime}:00`, timeZone: tz };
+              bodyPayload.end = { dateTime: `${date}T${endTime || startTime}:00`, timeZone: tz };
             }
 
-            const existingEvent = events.find(ev => ev.id === existingId);
-            if (existingEvent && existingEvent.isGoogle) {
-              const calId = existingEvent.googleCalendarId || targetCalId;
+            const existing = events.find(item => item.id === existingId);
+            if (existing && existing.isGoogle) {
+              const calId = existing.googleCalendarId || targetCalId;
               const res = await fetch(
-                `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(existingEvent.googleEventId)}`,
+                `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(existing.googleEventId)}`,
                 {
                   method: 'PATCH',
                   headers: {
                     Authorization: `Bearer ${googleAccessToken}`,
                     'Content-Type': 'application/json'
                   },
-                  body: JSON.stringify(gBody)
+                  body: JSON.stringify(bodyPayload)
                 }
               );
-              if (!res.ok) throw new Error('Failed to update Google event');
+              if (!res.ok) throw new Error('Update failed');
             } else {
               const res = await fetch(
                 `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalId)}/events`,
@@ -1578,28 +1105,28 @@
                     Authorization: `Bearer ${googleAccessToken}`,
                     'Content-Type': 'application/json'
                   },
-                  body: JSON.stringify(gBody)
+                  body: JSON.stringify(bodyPayload)
                 }
               );
-              if (!res.ok) throw new Error('Failed to create Google event');
+              if (!res.ok) throw new Error('Create failed');
             }
 
-            closeEventModal();
-            showToast('Saved & synced to Google Calendar!');
-            await syncFromGoogle();
+            closeDayModal();
+            showToast('Synced to Google Calendar');
+            await syncGoogleCalendars();
             return;
           } catch (err) {
             console.error(err);
-            showToast('Google sync error — check calendar write permissions');
+            showToast('Google save error — check calendar write permissions');
             return;
           }
         }
 
-        // Local Offline / Family Mode Persistence
+        // Local storage fallback when not signed into Google
         if (existingId) {
-          const idx = events.findIndex(ev => ev.id === existingId);
+          const idx = events.findIndex(item => item.id === existingId);
           if (idx !== -1) {
-            events[idx] = { ...events[idx], title, owner, date, allDay, startTime, endTime, location };
+            events[idx] = { ...events[idx], title, owner, date, allDay, startTime, endTime };
           }
         } else {
           events.push({
@@ -1609,22 +1136,21 @@
             date,
             allDay,
             startTime,
-            endTime,
-            location
+            endTime
           });
         }
 
-        saveJSON(STORAGE_KEYS.LOCAL_EVENTS, events);
-        closeEventModal();
-        renderCalendar();
-        showToast('Event saved to wall calendar');
+        saveJSON(STORAGE_EVENTS, events);
+        closeDayModal();
+        renderActiveView();
+        showToast('Event saved');
       }
 
-      async function deleteCurrentEvent() {
-        const existingId = document.getElementById('eventIdInput').value;
+      async function handleDeleteEvent() {
+        const existingId = document.getElementById('editEventId').value;
         if (!existingId) return;
 
-        const target = events.find(ev => ev.id === existingId);
+        const target = events.find(item => item.id === existingId);
         if (googleAccessToken && target && target.isGoogle) {
           try {
             await fetch(
@@ -1634,49 +1160,55 @@
                 headers: { Authorization: `Bearer ${googleAccessToken}` }
               }
             );
-            closeEventModal();
+            closeDayModal();
             showToast('Deleted from Google Calendar');
-            await syncFromGoogle();
+            await syncGoogleCalendars();
             return;
           } catch (err) {
             console.error(err);
-            showToast('Could not delete event from Google');
+            showToast('Could not delete Google event');
             return;
           }
         }
 
-        events = events.filter(ev => ev.id !== existingId);
-        saveJSON(STORAGE_KEYS.LOCAL_EVENTS, events);
-        closeEventModal();
-        renderCalendar();
-        showToast('Event removed');
+        events = events.filter(item => item.id !== existingId);
+        saveJSON(STORAGE_EVENTS, events);
+        closeDayModal();
+        renderActiveView();
+        showToast('Event deleted');
       }
 
       /* =====================================================================
-         9. GOOGLE IDENTITY SERVICES & TWO-WAY GOOGLE CALENDAR/TASKS SYNC
+         8. GOOGLE CALENDAR OAUTH & SYNC (NO TASKS API)
          ===================================================================== */
-      function initGoogleOAuth() {
-        const clientId = settings.googleClientId.trim();
-        if (!clientId) {
-          showToast('Please paste your Google OAuth Client ID first');
+      function connectGoogleAccount() {
+        const inputEl = document.getElementById('clientIdInput');
+        const rawClientId = inputEl ? inputEl.value.trim() : settings.googleClientId.trim();
+
+        if (!rawClientId) {
+          showToast('Paste your Google OAuth Client ID first');
           return;
         }
+
+        settings.googleClientId = rawClientId;
+        saveJSON(STORAGE_SETTINGS, settings);
+
         if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-          showToast('Google Sign-In library is still loading — try again in a second');
+          showToast('Google Sign-In is still loading — try again in 2 seconds');
           return;
         }
 
         tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks',
+          client_id: rawClientId,
+          scope: 'https://www.googleapis.com/auth/calendar',
           callback: async (tokenResponse) => {
             if (tokenResponse && tokenResponse.access_token) {
               googleAccessToken = tokenResponse.access_token;
-              updateGoogleStatusUI(true);
+              updateGoogleConnectionUI(true);
               showToast('Connected to Google Calendar!');
-              await fetchGoogleCalendarList();
-              await syncFromGoogle();
-              startAutoSyncTimer();
+              await loadUserCalendarsList();
+              await syncGoogleCalendars();
+              startAutoRefresh();
             }
           }
         });
@@ -1684,37 +1216,34 @@
         tokenClient.requestAccessToken({ prompt: 'consent' });
       }
 
-      function disconnectGoogle() {
+      function disconnectGoogleAccount() {
         if (googleAccessToken && window.google && window.google.accounts) {
           window.google.accounts.oauth2.revoke(googleAccessToken, () => {});
         }
         googleAccessToken = null;
-        clearInterval(syncTimer);
-        updateGoogleStatusUI(false);
-        events = loadJSON(STORAGE_KEYS.LOCAL_EVENTS, []);
-        renderCalendar();
+        clearInterval(autoSyncTimer);
+        updateGoogleConnectionUI(false);
+        events = loadJSON(STORAGE_EVENTS, []);
+        renderActiveView();
         showToast('Disconnected from Google');
       }
 
-      function updateGoogleStatusUI(connected) {
-        const statusPill = document.getElementById('googleAuthStatus');
+      function updateGoogleConnectionUI(isConnected) {
+        const badge = document.getElementById('googleStatusBadge');
         const disconnectBtn = document.getElementById('disconnectGoogleBtn');
-        const mappingBox = document.getElementById('googleCalendarMappingBox');
+        const mapSection = document.getElementById('calendarMappingSection');
 
-        if (connected) {
-          statusPill.textContent = 'Connected & Live';
-          statusPill.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40';
-          disconnectBtn.classList.remove('hidden');
-          mappingBox.classList.remove('hidden');
-        } else {
-          statusPill.textContent = 'Not Connected';
-          statusPill.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300';
-          disconnectBtn.classList.add('hidden');
-          mappingBox.classList.add('hidden');
+        if (badge) {
+          badge.textContent = isConnected ? 'Connected' : 'Not Connected';
+          badge.className = isConnected
+            ? 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40'
+            : 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300';
         }
+        if (disconnectBtn) disconnectBtn.classList.toggle('hidden', !isConnected);
+        if (mapSection) mapSection.classList.toggle('hidden', !isConnected);
       }
 
-      async function fetchGoogleCalendarList() {
+      async function loadUserCalendarsList() {
         if (!googleAccessToken) return;
         try {
           const res = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
@@ -1722,59 +1251,63 @@
           });
           if (!res.ok) return;
           const data = await res.json();
-          googleCalendarsList = data.items || [];
+          googleCalendars = data.items || [];
 
-          const selects = [
-            { el: document.getElementById('mapMineCalendar'), saved: settings.mapMineCalendarId, allowNone: false },
-            { el: document.getElementById('mapWifeCalendar'), saved: settings.mapWifeCalendarId, allowNone: true },
-            { el: document.getElementById('mapFamilyCalendar'), saved: settings.mapFamilyCalendarId, allowNone: true }
+          const dropdownConfigs = [
+            { id: 'mapMineSelect', saved: settings.mapMineCalendarId, optional: false },
+            { id: 'mapWifeSelect', saved: settings.mapWifeCalendarId, optional: true },
+            { id: 'mapFamilySelect', saved: settings.mapFamilyCalendarId, optional: true }
           ];
 
-          selects.forEach(({ el, saved, allowNone }) => {
-            el.innerHTML = allowNone ? '<option value="">-- None --</option>' : '';
-            googleCalendarsList.forEach(cal => {
+          dropdownConfigs.forEach(({ id, saved, optional }) => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            sel.innerHTML = optional ? '<option value="">-- None --</option>' : '';
+            googleCalendars.forEach(cal => {
               const opt = document.createElement('option');
               opt.value = cal.id;
               opt.textContent = cal.summaryOverride || cal.summary;
-              if (cal.id === saved || (!saved && cal.primary && !allowNone)) {
+              if (cal.id === saved || (!saved && cal.primary && !optional)) {
                 opt.selected = true;
               }
-              el.appendChild(opt);
+              sel.appendChild(opt);
             });
           });
         } catch (err) {
-          console.error('Error fetching calendarList:', err);
+          console.error('Failed to load calendarList:', err);
         }
       }
 
-      async function syncFromGoogle() {
+      async function syncGoogleCalendars() {
         if (!googleAccessToken) {
-          renderCalendar();
-          showToast('Refreshed local calendar');
+          renderActiveView();
+          showToast('Calendar refreshed');
           return;
         }
 
-        const syncIcon = document.getElementById('syncIcon');
-        syncIcon.classList.add('animate-spin');
+        const icon = document.getElementById('refreshIcon');
+        if (icon) icon.classList.add('animate-spin');
 
         try {
-          const timeMin = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1).toISOString();
-          const timeMax = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 2, 0).toISOString();
+          const year = viewedMonthDate.getFullYear();
+          const month = viewedMonthDate.getMonth();
+          const timeMin = new Date(year, month - 1, 1).toISOString();
+          const timeMax = new Date(year, month + 2, 0).toISOString();
 
-          const calendarsToFetch = [
-            { id: settings.mapMineCalendarId || 'primary', owner: 'mine' },
-            { id: settings.mapWifeCalendarId, owner: 'wife' },
-            { id: settings.mapFamilyCalendarId, owner: 'family' }
-          ].filter(item => Boolean(item.id));
+          const sources = [
+            { calId: settings.mapMineCalendarId || 'primary', owner: 'mine' },
+            { calId: settings.mapWifeCalendarId, owner: 'wife' },
+            { calId: settings.mapFamilyCalendarId, owner: 'family' }
+          ].filter(s => Boolean(s.calId));
 
-          const uniqueCalMap = new Map();
-          calendarsToFetch.forEach(c => {
-            if (!uniqueCalMap.has(c.id)) uniqueCalMap.set(c.id, c.owner);
+          const uniqueMap = new Map();
+          sources.forEach(s => {
+            if (!uniqueMap.has(s.calId)) uniqueMap.set(s.calId, s.owner);
           });
 
-          const mergedEvents = [];
+          const fetchedEvents = [];
 
-          for (const [calId, owner] of uniqueCalMap.entries()) {
+          for (const [calId, owner] of uniqueMap.entries()) {
             const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&maxResults=250`;
             const res = await fetch(url, {
               headers: { Authorization: `Bearer ${googleAccessToken}` }
@@ -1786,63 +1319,61 @@
               if (item.status === 'cancelled') return;
               const isAllDay = Boolean(item.start && item.start.date);
               let dateStr = '';
-              let startTimeStr = '';
-              let endTimeStr = '';
+              let startStr = '';
+              let endStr = '';
 
               if (isAllDay) {
                 dateStr = item.start.date;
               } else if (item.start && item.start.dateTime) {
                 const startObj = new Date(item.start.dateTime);
                 dateStr = toISODate(startObj);
-                startTimeStr = `${String(startObj.getHours()).padStart(2, '0')}:${String(startObj.getMinutes()).padStart(2, '0')}`;
+                startStr = `${String(startObj.getHours()).padStart(2, '0')}:${String(startObj.getMinutes()).padStart(2, '0')}`;
                 if (item.end && item.end.dateTime) {
                   const endObj = new Date(item.end.dateTime);
-                  endTimeStr = `${String(endObj.getHours()).padStart(2, '0')}:${String(endObj.getMinutes()).padStart(2, '0')}`;
+                  endStr = `${String(endObj.getHours()).padStart(2, '0')}:${String(endObj.getMinutes()).padStart(2, '0')}`;
                 }
               }
 
-              mergedEvents.push({
-                id: `g-${calId}-${item.id}`,
-                googleEventId: item.id,
-                googleCalendarId: calId,
-                isGoogle: true,
-                title: item.summary || '(No Title)',
-                owner,
-                date: dateStr,
-                allDay: isAllDay,
-                startTime: startTimeStr,
-                endTime: endTimeStr,
-                location: item.location || ''
-              });
+              if (dateStr) {
+                fetchedEvents.push({
+                  id: `g-${calId}-${item.id}`,
+                  googleEventId: item.id,
+                  googleCalendarId: calId,
+                  isGoogle: true,
+                  title: item.summary || '(Untitled)',
+                  owner,
+                  date: dateStr,
+                  allDay: isAllDay,
+                  startTime: startStr,
+                  endTime: endStr
+                });
+              }
             });
           }
 
-          events = mergedEvents;
-          renderCalendar();
+          events = fetchedEvents;
+          renderActiveView();
         } catch (err) {
-          console.error('Google sync failed:', err);
+          console.error('Google sync error:', err);
         } finally {
-          syncIcon.classList.remove('animate-spin');
+          if (icon) icon.classList.remove('animate-spin');
         }
       }
 
-      function startAutoSyncTimer() {
-        clearInterval(syncTimer);
-        const interval = parseInt(settings.syncInterval, 10) || 30000;
-        syncTimer = setInterval(() => {
-          if (googleAccessToken) {
-            syncFromGoogle();
-          }
-        }, interval);
+      function startAutoRefresh() {
+        clearInterval(autoSyncTimer);
+        autoSyncTimer = setInterval(() => {
+          if (googleAccessToken) syncGoogleCalendars();
+        }, 120000); // Auto-sync every 2 minutes
       }
 
       /* =====================================================================
-         9. FULLSCREEN API & SETTINGS MODAL WIRING
+         9. SETTINGS & FULLSCREEN CONTROLS
          ===================================================================== */
       function toggleFullscreen() {
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen().catch(() => {
-            showToast('Tap screen or use browser menu for Fullscreen');
+            showToast('Use browser menu for Fullscreen');
           });
         } else {
           document.exitFullscreen().catch(() => {});
@@ -1850,100 +1381,105 @@
       }
 
       function openSettingsModal() {
-        document.getElementById('settingMineName').value = settings.mineName;
-        document.getElementById('settingWifeName').value = settings.wifeName;
-        document.getElementById('settingClockFormat').value = settings.clockFormat;
-        document.getElementById('settingWallpaperInterval').value = String(settings.wallpaperInterval);
-        document.getElementById('settingSyncInterval').value = String(settings.syncInterval);
-        document.getElementById('settingGoogleClientId').value = settings.googleClientId;
+        document.getElementById('clientIdInput').value = settings.googleClientId || '';
+        document.getElementById('mineNameInput').value = settings.mineName || 'Me';
+        document.getElementById('wifeNameInput').value = settings.wifeName || 'Wife';
+        document.getElementById('clockFormatSelect').value = settings.clockFormat || '12';
+        document.getElementById('wallpaperSelect').value = settings.wallpaperMode || 'rotate';
 
         const modal = document.getElementById('settingsModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
       }
 
       function closeSettingsModal() {
         const modal = document.getElementById('settingsModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        }
       }
 
-      function saveSettingsFromModal() {
-        settings.mineName = document.getElementById('settingMineName').value.trim() || 'My Calendar';
-        settings.wifeName = document.getElementById('settingWifeName').value.trim() || "Wife's Calendar";
-        settings.clockFormat = document.getElementById('settingClockFormat').value;
-        settings.wallpaperInterval = parseInt(document.getElementById('settingWallpaperInterval').value, 10);
-        settings.syncInterval = parseInt(document.getElementById('settingSyncInterval').value, 10);
-        settings.googleClientId = document.getElementById('settingGoogleClientId').value.trim();
+      function saveSettings() {
+        settings.googleClientId = document.getElementById('clientIdInput').value.trim();
+        settings.mineName = document.getElementById('mineNameInput').value.trim() || 'Me';
+        settings.wifeName = document.getElementById('wifeNameInput').value.trim() || 'Wife';
+        settings.clockFormat = document.getElementById('clockFormatSelect').value;
+        settings.wallpaperMode = document.getElementById('wallpaperSelect').value;
 
         if (googleAccessToken) {
-          settings.mapMineCalendarId = document.getElementById('mapMineCalendar').value || 'primary';
-          settings.mapWifeCalendarId = document.getElementById('mapWifeCalendar').value || '';
-          settings.mapFamilyCalendarId = document.getElementById('mapFamilyCalendar').value || '';
+          settings.mapMineCalendarId = document.getElementById('mapMineSelect').value || 'primary';
+          settings.mapWifeCalendarId = document.getElementById('mapWifeSelect').value || '';
+          settings.mapFamilyCalendarId = document.getElementById('mapFamilySelect').value || '';
         }
 
-        saveJSON(STORAGE_KEYS.SETTINGS, settings);
+        saveJSON(STORAGE_SETTINGS, settings);
         updateClock();
-        resetWallpaperTimer();
+        applyWallpaperPreference();
         closeSettingsModal();
 
         if (googleAccessToken) {
-          startAutoSyncTimer();
-          syncFromGoogle();
+          syncGoogleCalendars();
         } else {
-          renderCalendar();
+          renderActiveView();
         }
         showToast('Settings saved');
       }
 
       /* =====================================================================
-         10. EVENT LISTENERS & INITIALIZATION
+         10. INITIALIZATION
          ===================================================================== */
       window.addEventListener('DOMContentLoaded', () => {
         updateClock();
         setInterval(updateClock, 1000);
 
-        applyWallpaper(wallpaperIndex);
-        resetWallpaperTimer();
+        applyWallpaperPreference();
+        renderActiveView();
 
-        renderCalendar();
+        // View Toggle Buttons
+        document.getElementById('viewMonthBtn').addEventListener('click', () => setCalendarView('month'));
+        document.getElementById('viewScheduleBtn').addEventListener('click', () => setCalendarView('schedule'));
+        document.getElementById('scheduleAddBtn').addEventListener('click', () => openDayModal(toISODate(new Date())));
 
-        // Compact Icon-Only Controls & Month Actions
-        document.getElementById('openAddEventBtn').addEventListener('click', () => openNewEventModal());
-        document.getElementById('syncNowBtn').addEventListener('click', () => syncFromGoogle());
-        document.getElementById('fullscreenBtn').addEventListener('click', () => toggleFullscreen());
-        document.getElementById('openSettingsBtn').addEventListener('click', () => openSettingsModal());
+        // Top Bar Controls
+        document.getElementById('prevMonthBtn').addEventListener('click', () => {
+          viewedMonthDate = new Date(viewedMonthDate.getFullYear(), viewedMonthDate.getMonth() - 1, 1);
+          if (googleAccessToken) syncGoogleCalendars();
+          else renderActiveView();
+        });
 
-        // Month Navigation Controls
+        document.getElementById('nextMonthBtn').addEventListener('click', () => {
+          viewedMonthDate = new Date(viewedMonthDate.getFullYear(), viewedMonthDate.getMonth() + 1, 1);
+          if (googleAccessToken) syncGoogleCalendars();
+          else renderActiveView();
+        });
+
         document.getElementById('todayBtn').addEventListener('click', () => {
-          referenceDate = new Date();
-          renderCalendar();
+          viewedMonthDate = new Date();
+          if (googleAccessToken) syncGoogleCalendars();
+          else renderActiveView();
         });
 
-        document.getElementById('prevPeriodBtn').addEventListener('click', () => {
-          referenceDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
-          renderCalendar();
-        });
+        document.getElementById('refreshBtn').addEventListener('click', () => syncGoogleCalendars());
+        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
 
-        document.getElementById('nextPeriodBtn').addEventListener('click', () => {
-          referenceDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 1);
-          renderCalendar();
-        });
-
-        // Event Modal Controls
+        // Day / Event Modal Controls
+        document.getElementById('closeDayModalBtn').addEventListener('click', closeDayModal);
+        document.getElementById('resetFormBtn').addEventListener('click', () => resetEventForm(selectedDayISO));
         document.getElementById('eventAllDayInput').addEventListener('change', (e) => {
-          document.getElementById('timeInputsRow').classList.toggle('hidden', e.target.checked);
+          document.getElementById('eventTimeRow').classList.toggle('hidden', e.target.checked);
         });
-        document.getElementById('eventForm').addEventListener('submit', saveEventFromForm);
-        document.getElementById('closeEventModalBtn').addEventListener('click', closeEventModal);
-        document.getElementById('cancelEventBtn').addEventListener('click', closeEventModal);
-        document.getElementById('deleteEventBtn').addEventListener('click', deleteCurrentEvent);
+        document.getElementById('eventForm').addEventListener('submit', handleSaveEvent);
+        document.getElementById('deleteEventBtn').addEventListener('click', handleDeleteEvent);
 
         // Settings Modal Controls
-        document.getElementById('closeSettingsModalBtn').addEventListener('click', closeSettingsModal);
-        document.getElementById('saveSettingsBtn').addEventListener('click', saveSettingsFromModal);
-        document.getElementById('connectGoogleBtn').addEventListener('click', initGoogleOAuth);
-        document.getElementById('disconnectGoogleBtn').addEventListener('click', disconnectGoogle);
+        document.getElementById('closeSettingsBtn').addEventListener('click', closeSettingsModal);
+        document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+        document.getElementById('connectGoogleBtn').addEventListener('click', connectGoogleAccount);
+        document.getElementById('disconnectGoogleBtn').addEventListener('click', disconnectGoogleAccount);
       });
     })();
   </script>
